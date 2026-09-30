@@ -1,0 +1,218 @@
+"use client"
+
+import { useState } from "react"
+import { MessageCircle, Minus, Plus, ShoppingBasket, Trash2, UtensilsCrossed } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
+import { faNumber, formatPrice } from "@/lib/format"
+import { basketCount, basketLineList, basketTotal, useBasketStore } from "@/lib/basket-store"
+import type { BasketLine } from "@/lib/basket-store"
+import type { RestaurantConfig } from "@/lib/types"
+
+interface BasketSheetProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  config: RestaurantConfig
+}
+
+function BasketStepper({ line }: { line: BasketLine }) {
+  const setQty = useBasketStore((state) => state.setQty)
+  return (
+    <div className="flex h-9 w-fit items-center gap-0.5 rounded-full bg-primary px-0.5 text-primary-foreground">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7 rounded-full text-primary-foreground hover:bg-white/15 hover:text-primary-foreground"
+        aria-label={`کاهش تعداد ${line.name}`}
+        onClick={() => setQty(line.id, line.qty - 1)}
+      >
+        <Minus className="h-3.5 w-3.5" aria-hidden />
+      </Button>
+      <span className="min-w-5 text-center text-xs font-bold" aria-live="polite">
+        {faNumber(line.qty)}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7 rounded-full text-primary-foreground hover:bg-white/15 hover:text-primary-foreground"
+        aria-label={`افزایش تعداد ${line.name}`}
+        onClick={() => setQty(line.id, line.qty + 1)}
+      >
+        <Plus className="h-3.5 w-3.5" aria-hidden />
+      </Button>
+    </div>
+  )
+}
+
+export default function BasketSheet({ open, onOpenChange, config }: BasketSheetProps) {
+  const lines = useBasketStore((state) => state.lines)
+  const remove = useBasketStore((state) => state.remove)
+  const clear = useBasketStore((state) => state.clear)
+  const [customerName, setCustomerName] = useState("")
+  const [note, setNote] = useState("")
+
+  const lineList = basketLineList(lines)
+  const count = basketCount(lines)
+  const total = basketTotal(lines)
+
+  const scrollToMenu = () => {
+    onOpenChange(false)
+    window.setTimeout(() => {
+      document.getElementById("menu")?.scrollIntoView({ behavior: "smooth" })
+    }, 250)
+  }
+
+  const handleCheckout = () => {
+    if (!config.whatsapp) {
+      toast.error("شماره واتساپ رستوران ثبت نشده است؛ لطفاً تلفنی سفارش دهید.")
+      return
+    }
+    const itemLines = lineList
+      .map((line) => `• ${faNumber(line.qty)}× ${line.name} — ${formatPrice(line.price * line.qty)}`)
+      .join("\n")
+
+    const messageParts = [
+      `سلام ${config.name} 👋`,
+      "می‌خواهم این سفارش را ثبت کنم:",
+      "",
+      itemLines,
+      "",
+      `جمع کل: ${formatPrice(total)}`,
+    ]
+    if (customerName.trim().length > 0) messageParts.push(`نام: ${customerName.trim()}`)
+    if (note.trim().length > 0) messageParts.push(`یادداشت: ${note.trim()}`)
+
+    const url = `https://wa.me/${config.whatsapp}?text=${encodeURIComponent(messageParts.join("\n"))}`
+    window.open(url, "_blank", "noopener,noreferrer")
+    toast.success("سفارش شما آماده ارسال در واتساپ است 🎉")
+  }
+
+  const handleClear = () => {
+    clear()
+    setCustomerName("")
+    setNote("")
+    toast.success("سبد خرید پاک شد")
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        className="nice-scrollbar max-h-[85vh] gap-3 overflow-y-auto rounded-t-2xl"
+      >
+        {/* Drag-handle look */}
+        <div className="mx-auto mt-1 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/25" aria-hidden />
+
+        <SheetHeader className="px-4 pb-0">
+          <SheetTitle className="flex items-center gap-2 text-lg font-extrabold">
+            سبد خرید
+            {count > 0 && (
+              <Badge className="rounded-full px-2.5">{faNumber(count)} آیتم</Badge>
+            )}
+          </SheetTitle>
+          <SheetDescription className="sr-only">
+            آیتم‌های انتخاب‌شده، تعداد و مبلغ کل سفارش شما
+          </SheetDescription>
+        </SheetHeader>
+
+        {count === 0 ? (
+          <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+            <ShoppingBasket className="h-16 w-16 text-muted-foreground/40" aria-hidden />
+            <p className="text-lg font-bold">سبد خرید شما خالی است</p>
+            <p className="text-sm text-muted-foreground">
+              از منو، آیتم‌های دلخواه‌تان را اضافه کنید.
+            </p>
+            <Button className="mt-1 h-11 rounded-full px-6" onClick={scrollToMenu}>
+              مشاهده منو
+            </Button>
+          </div>
+        ) : (
+          <>
+            <ul className="divide-y px-4">
+              {lineList.map((line) => (
+                <li key={line.id} className="flex items-center gap-3 py-3">
+                  {line.image ? (
+                    <img
+                      src={line.image}
+                      alt={line.name}
+                      loading="lazy"
+                      className="h-14 w-14 shrink-0 rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-muted">
+                      <UtensilsCrossed className="h-6 w-6 text-muted-foreground/50" aria-hidden />
+                    </div>
+                  )}
+
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <p className="truncate text-sm font-bold">{line.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatPrice(line.price)}</p>
+                    <BasketStepper line={line} />
+                  </div>
+
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <span className="text-sm font-bold">{formatPrice(line.price * line.qty)}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      aria-label={`حذف ${line.name} از سبد`}
+                      onClick={() => remove(line.id)}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="space-y-3 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">مجموع سفارش</span>
+                <span className="text-lg font-extrabold">{formatPrice(total)}</span>
+              </div>
+
+              <Input
+                value={customerName}
+                onChange={(event) => setCustomerName(event.target.value)}
+                placeholder="نام شما (اختیاری)"
+                aria-label="نام شما (اختیاری)"
+                className="h-11"
+              />
+              <Textarea
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="یادداشت سفارش (اختیاری)"
+                aria-label="یادداشت سفارش (اختیاری)"
+                maxLength={200}
+                rows={2}
+                className="resize-none"
+              />
+
+              <Button
+                onClick={handleCheckout}
+                className="h-12 w-full rounded-xl bg-[#25D366] text-base font-bold text-white hover:bg-[#1eb856]"
+              >
+                <MessageCircle className="h-5 w-5" aria-hidden />
+                ثبت سفارش در واتساپ
+              </Button>
+
+              <Button
+                variant="ghost"
+                onClick={handleClear}
+                className="h-10 w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+                پاک کردن سبد
+              </Button>
+            </div>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  )
+}

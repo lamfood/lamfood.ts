@@ -1,0 +1,220 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { RefreshCw, TriangleAlert } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import BasketSheet from "@/components/menu/BasketSheet"
+import FloatingBasket from "@/components/menu/FloatingBasket"
+import Hero from "@/components/menu/Hero"
+import InfoCards from "@/components/menu/InfoCards"
+import LocationSheet from "@/components/menu/LocationSheet"
+import MenuFooter from "@/components/menu/MenuFooter"
+import MenuSection from "@/components/menu/MenuSection"
+import StickyCategoryNav, { type NavGroup } from "@/components/menu/StickyCategoryNav"
+import { ApiError, apiFetch } from "@/lib/api"
+import { CATEGORIES } from "@/lib/categories"
+import { useBasketStore } from "@/lib/basket-store"
+import type { MenuItemDTO, MenuResponse, PublicConfigResponse, RestaurantConfig } from "@/lib/types"
+
+type PageStatus = "loading" | "error" | "ready"
+
+/** Compute whether the restaurant is open right now in Tehran local time. */
+function computeOpenNow(openHourFrom: string, openHourTo: string): boolean {
+  const parseHour = (value: string): number => {
+    const parts = value.split(":")
+    const hours = Number(parts[0])
+    const minutes = Number(parts[1] ?? "0")
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return Number.NaN
+    return hours * 60 + minutes
+  }
+
+  const fromMin = parseHour(openHourFrom)
+  let toMin = parseHour(openHourTo)
+  if (toMin === 1440) toMin = 1440 // "24:00" = end of day
+  if (Number.isNaN(fromMin) || Number.isNaN(toMin)) return true
+
+  const tehranTime = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Tehran",
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date())
+  const timeParts = tehranTime.split(":")
+  const nowMin = (Number(timeParts[0]) % 24) * 60 + Number(timeParts[1])
+
+  if (toMin <= fromMin) {
+    // Overnight window (e.g. 18:00 → 02:00)
+    return nowMin >= fromMin || nowMin < toMin
+  }
+  return nowMin >= fromMin && nowMin < toMin
+}
+
+function LoadingView() {
+  return (
+    <div className="min-h-screen bg-background" aria-busy="true">
+      <span className="sr-only">در حال بارگذاری منو…</span>
+      <Skeleton className="h-72 w-full rounded-none sm:h-96" />
+      <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Skeleton key={index} className="h-36 rounded-2xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <Skeleton key={index} className="h-64 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ErrorView({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-4 text-center">
+      <div className="rounded-full bg-destructive/10 p-6">
+        <TriangleAlert className="h-10 w-10 text-destructive" aria-hidden />
+      </div>
+      <h1 className="text-xl font-extrabold">اوپس! خطایی رخ داد</h1>
+      <p className="max-w-sm text-sm leading-6 text-muted-foreground">{message}</p>
+      <Button className="mt-1 h-11 rounded-full px-6" onClick={onRetry}>
+        <RefreshCw className="h-4 w-4" aria-hidden />
+        تلاش مجدد
+      </Button>
+    </div>
+  )
+}
+
+export default function Home() {
+  const [status, setStatus] = useState<PageStatus>("loading")
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [config, setConfig] = useState<RestaurantConfig | null>(null)
+  const [items, setItems] = useState<MenuItemDTO[] | null>(null)
+
+  const [query, setQuery] = useState("")
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [basketOpen, setBasketOpen] = useState(false)
+  const [locationOpen, setLocationOpen] = useState(false)
+  const [isOpenNow, setIsOpenNow] = useState<boolean | null>(null)
+
+  // Rehydrate the persisted basket after mount (skipHydration: true).
+  useEffect(() => {
+    useBasketStore.persist.rehydrate()
+  }, [])
+
+  const loadData = useCallback(async () => {
+    setStatus("loading")
+    setErrorMessage(null)
+    try {
+      const [configResult, menuResult] = await Promise.all([
+        apiFetch<PublicConfigResponse>("/api/config"),
+        apiFetch<MenuResponse>("/api/menu"),
+      ])
+      setConfig(configResult.restaurant)
+      setItems(menuResult.items)
+      setStatus("ready")
+    } catch (error) {
+      setErrorMessage(
+        error instanceof ApiError
+          ? error.message
+          : "خطای غیرمنتظره‌ای رخ داد؛ دوباره تلاش کنید."
+      )
+      setStatus("error")
+    }
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => void loadData(), 0)
+    return () => clearTimeout(timer)
+  }, [loadData])
+
+  // Compute open/closed status after mount to avoid hydration mismatch.
+  useEffect(() => {
+    if (!config) return
+    const timer = setTimeout(
+      () => setIsOpenNow(computeOpenNow(config.openHourFrom, config.openHourTo)),
+      0
+    )
+    return () => clearTimeout(timer)
+  }, [config])
+
+  const groups = useMemo<NavGroup[]>(
+    () =>
+      CATEGORIES.map((category) => ({
+        key: category.key,
+        label: category.label,
+        icon: category.icon,
+        count: (items ?? []).filter((item) => item.category === category.key).length,
+      })).filter((group) => group.count > 0),
+    [items]
+  )
+
+  const searchQuery = query.trim().toLowerCase()
+  const searchResults = useMemo<MenuItemDTO[]>(() => {
+    if (searchQuery.length === 0) return []
+    return (items ?? []).filter(
+      (item) =>
+        item.name.toLowerCase().includes(searchQuery) ||
+        (item.description ?? "").toLowerCase().includes(searchQuery)
+    )
+  }, [items, searchQuery])
+
+  const searchActive = searchQuery.length > 0
+
+  if (status === "loading") {
+    return <LoadingView />
+  }
+
+  if (status === "error" || !config || items === null) {
+    return (
+      <ErrorView
+        message={errorMessage ?? "خطای غیرمنتظره‌ای رخ داد؛ دوباره تلاش کنید."}
+        onRetry={() => void loadData()}
+      />
+    )
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col bg-background">
+      <Hero
+        config={config}
+        isOpenNow={isOpenNow}
+        onOpenLocation={() => setLocationOpen(true)}
+      />
+
+      <InfoCards
+        config={config}
+        isOpenNow={isOpenNow}
+        onOpenLocation={() => setLocationOpen(true)}
+      />
+
+      <StickyCategoryNav
+        groups={groups}
+        query={query}
+        onQueryChange={setQuery}
+        searchOpen={searchOpen}
+        onSearchOpenChange={setSearchOpen}
+        searchActive={searchActive}
+        resultCount={searchResults.length}
+        onOpenBasket={() => setBasketOpen(true)}
+      />
+
+      <main id="menu" className="flex-1">
+        <MenuSection
+          items={items}
+          results={searchResults}
+          query={query}
+          onClearSearch={() => setQuery("")}
+        />
+      </main>
+
+      <MenuFooter config={config} className="mt-auto" />
+
+      <FloatingBasket onOpen={() => setBasketOpen(true)} />
+      <BasketSheet open={basketOpen} onOpenChange={setBasketOpen} config={config} />
+      <LocationSheet open={locationOpen} onOpenChange={setLocationOpen} config={config} />
+    </div>
+  )
+}
