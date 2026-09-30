@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { apiFetch, ApiError } from "@/lib/api"
+import { saveAdminToken } from "@/lib/auth-client"
 import { faNumber } from "@/lib/format"
 import type { PublicConfigResponse } from "@/lib/types"
 
@@ -92,13 +93,16 @@ export default function LoginForm({
     setErrorKind(null)
 
     try {
-      const data = await apiFetch<{ ok: boolean; username: string }>(
+      const data = await apiFetch<{ ok: boolean; username: string; token?: string }>(
         "/api/admin/login",
         {
           method: "POST",
           body: JSON.stringify({ username: username.trim(), password }),
         },
       )
+      // Keep the signed token for contexts where cookies are blocked
+      // (sandboxed preview iframes); normal browsers rely on the cookie.
+      if (data.token) saveAdminToken(data.token)
       toast.success("خوش آمدید 👋")
       onSuccess(data.username)
     } catch (err) {

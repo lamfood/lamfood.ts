@@ -50,11 +50,28 @@ export function verifySessionToken(token: string, secret: string): SessionInfo |
   }
 }
 
+/**
+ * Resolve the admin session from either:
+ * 1. `Authorization: Bearer <token>` — used when cookies are unavailable
+ *    (e.g. sandboxed preview iframes block them). localStorage is origin-scoped,
+ *    so tokens can only be attached by JS running on this app's own origin.
+ * 2. The HttpOnly session cookie (primary path for normal browsers).
+ */
 export function getSession(req: NextRequest): SessionInfo | null {
-  const token = req.cookies.get(SESSION_COOKIE)?.value
-  if (!token) return null
   const secret = readConfig().sessionSecret
   if (!secret) return null
+
+  const authHeader = req.headers.get("authorization")
+  if (authHeader?.toLowerCase().startsWith("bearer ")) {
+    const token = authHeader.slice(7).trim()
+    if (token) {
+      const bearerSession = verifySessionToken(token, secret)
+      if (bearerSession) return bearerSession
+    }
+  }
+
+  const token = req.cookies.get(SESSION_COOKIE)?.value
+  if (!token) return null
   return verifySessionToken(token, secret)
 }
 
@@ -164,25 +181,105 @@ export function getClientIp(req: NextRequest): string {
   return req.headers.get("x-real-ip") ?? "unknown"
 }
 
-/** CSRF protection: for state-changing requests, Origin (when present) must match Host. */
-export function assertSameOrigin(req: NextRequest): NextResponse | null {
-  const origin = req.headers.get("origin")
-  if (!origin) return null // non-browser client (curl etc.) — still guarded by SameSite cookie
-  const host = req.headers.get("host")
-  try {
-    if (!host || new URL(origin).host !== host) {
-      return NextResponse.json(
-        { error: "csrf_rejected", message: "درخواست نامعتبر است." },
-        { status: 403 },
-      )
-    }
-  } catch {
-    return NextResponse.json(
-      { error: "csrf_rejected", message: "درخواست نامعتبر است." },
-      { status: 403 },
-    )
+/* ------------------------------------------------------------------ */
+/* CSRF protection (defence-in-depth on top of SameSite=Lax cookies)   */
+/* ------------------------------------------------------------------ */
+
+/** Hosts this deployment is reached through: direct Host + forwarded hosts
+ *  (tunnels/proxies may rewrite `Host` but forward the public one). */
+function collectHostCandidates(req: NextRequest): Set<string> {
+  const hosts = new Set<string>()
+  const push = (raw: string | null | undefined) => {
+    const v = raw?.trim().toLowerCase()
+    if (v) hosts.add(v)
   }
-  return null
+  push(req.headers.get("host"))
+  const forwarded = req.headers.get("x-forwarded-host")
+  if (forwarded) for (const part of forwarded.split(",")) push(part)
+  return hosts
+}
+
+function urlHost(value: string): string | null {
+  try {
+    return new URL(value).host.toLowerCase() || null
+  } catch {
+    return null
+  }
+}
+
+function csrfRejection(): NextResponse {
+  return NextResponse.json(
+    { error: "csrf_rejected", message: "درخواست نامعتبر است." },
+    { status: 403 },
+  )
+}
+
+/**
+ * `Sec-Fetch-Site` is browser-controlled fetch metadata (a forbidden header
+ * name — page JS can never set it). Modern browsers always send it on
+ * cross-site requests; older browsers and non-browser clients omit it.
+ */
+function isSelfInitiatedRequest(req: NextRequest): boolean {
+  const site = req.headers.get("sec-fetch-site")?.trim().toLowerCase()
+  return !site || site === "same-origin"
+}
+
+/**
+ * CSRF protection for state-changing requests. Rules:
+ * - No Origin header → non-browser/legacy client; SameSite cookies still guard
+ *   (a modern browser always sends Origin on cross-site POSTs, so an explicit
+ *   cross-site signal is rejected even here).
+ * - Origin "null" (sandboxed iframe / privacy webview) → allowed only with the
+ *   unforgeable same-origin fetch-metadata signal (attackers can produce
+ *   "null" origins too). Session APIs stay gated regardless: cross-site
+ *   requests carry no SameSite=Lax cookie and cannot attach the Bearer token.
+ * - Otherwise Origin must refer to a host this deployment is served from
+ *   (Host / X-Forwarded-Host), or — behind tunnels that rewrite both — match
+ *   the browser-controlled Referer AND be same-origin-initiated.
+ */
+export function assertSameOrigin(req: NextRequest): NextResponse | null {
+  const reject = (detail: Record<string, unknown>) => {
+    console.error("[csrf] rejected request:", JSON.stringify(detail))
+    return csrfRejection()
+  }
+
+  const origin = req.headers.get("origin")
+  const fetchSite = req.headers.get("sec-fetch-site")?.trim().toLowerCase()
+
+  if (!origin) {
+    if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "same-site") {
+      return reject({ origin, fetchSite, path: req.nextUrl?.pathname })
+    }
+    return null // non-browser client (curl etc.) — still guarded by SameSite cookie
+  }
+
+  const trimmed = origin.trim()
+  if (trimmed.toLowerCase() === "null") {
+    // Opaque origin — cannot be combined with session cookies; only trust it
+    // when the browser itself says the request is same-origin initiated.
+    if (isSelfInitiatedRequest(req)) return null
+    return reject({ origin, fetchSite, path: req.nextUrl?.pathname })
+  }
+
+  const originHost = urlHost(trimmed)
+  if (originHost) {
+    if (collectHostCandidates(req).has(originHost)) return null
+
+    // Tunnel rewrote Host and sent no X-Forwarded-Host: accept requests whose
+    // Origin and Referer agree AND which the browser marks same-origin
+    // initiated (both fields are browser-controlled, unforgeable by pages).
+    const refererHost = urlHost(req.headers.get("referer") ?? "")
+    if (refererHost && refererHost === originHost && isSelfInitiatedRequest(req)) return null
+  }
+
+  return reject({
+    origin,
+    referer: req.headers.get("referer"),
+    host: req.headers.get("host"),
+    xForwardedHost: req.headers.get("x-forwarded-host"),
+    fetchSite,
+    path: req.nextUrl?.pathname,
+  })
 }
 
 /** Returns a 401 response when there is no valid admin session, otherwise null. */

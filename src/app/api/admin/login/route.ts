@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     )
   }
   const token = createSessionToken(ip, cfg.sessionSecret)
-  const res = NextResponse.json({ ok: true, username: cfg.admin.username })
+  const res = NextResponse.json({ ok: true, username: cfg.admin.username, token })
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions())
   return res
 }

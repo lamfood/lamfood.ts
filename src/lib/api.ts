@@ -1,5 +1,7 @@
 "use client"
 
+import { clearAdminToken, getAdminToken } from "@/lib/auth-client"
+
 export class ApiError extends Error {
   status: number
   data: unknown
@@ -19,15 +21,16 @@ interface ErrorBody {
 
 /** Small client-side fetch wrapper with consistent Persian error messages. */
 export async function apiFetch<T = unknown>(url: string, init?: RequestInit): Promise<T> {
+  const token = getAdminToken()
   let res: Response
   try {
     res = await fetch(url, {
       ...init,
       headers: {
-        ...(init?.body && !(typeof init.body === "string" || init.body instanceof FormData)
-          ? {}
-          : {}),
         ...(init?.body && typeof init.body === "string" ? { "Content-Type": "application/json" } : {}),
+        // Signed session token for contexts where cookies are blocked
+        // (sandboxed preview iframes). Cookie remains the primary path.
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(init?.headers ?? {}),
       },
     })
@@ -38,6 +41,8 @@ export async function apiFetch<T = unknown>(url: string, init?: RequestInit): Pr
   const data = (await res.json().catch(() => null)) as ErrorBody | null
 
   if (!res.ok) {
+    // Expired/invalid session → drop any stored token so the next probe is clean.
+    if (res.status === 401) clearAdminToken()
     const message =
       data?.message ??
       (res.status === 401

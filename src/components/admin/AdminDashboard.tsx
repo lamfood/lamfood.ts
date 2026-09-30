@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { apiFetch, ApiError } from "@/lib/api"
+import { clearAdminToken } from "@/lib/auth-client"
 import type { PublicConfigResponse } from "@/lib/types"
 
 export default function AdminDashboard({
@@ -50,6 +51,7 @@ export default function AdminDashboard({
   async function handleLogout() {
     if (loggingOut) return
     setLoggingOut(true)
+    clearAdminToken() // drop the stored session token (cookie is cleared server-side)
     try {
       await apiFetch<{ ok: boolean }>("/api/admin/logout", { method: "POST" })
       toast.success("خارج شدید")

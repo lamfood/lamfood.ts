@@ -101,3 +101,20 @@ Work Log:
 
 Stage Summary:
 - Project complete and browser-verified. Admin credentials: admin / admin123 (change via `bun scripts/set-admin-password.ts <password>`). Restaurant info fully driven by config.json (editable live in admin → تنظیمات رستوران).
+
+---
+Task ID: 6
+Agent: main (Z.ai Code)
+Task: Fix admin login failing (admin/admin123 → 403) — CSRF origin check vs proxy tunnel + cookie-less embeds
+
+Work Log:
+- Diagnosed from dev.log: user's login attempts returned 403 (csrf_rejected), NOT 401 — the stored scrypt hash still matches admin123 exactly (verified with bun script); the browser's Origin (public preview URL) didn't match the Host the Next server sees behind the sandbox tunnel, so assertSameOrigin rejected requests before credential evaluation. 403 also never registered as a failure (silent reject loop).
+- Rewrote assertSameOrigin (src/lib/auth.ts) to be proxy/embed-aware, fail-closed where it matters: candidates = Host + every X-Forwarded-Host; Origin:"null" (sandboxed iframe / privacy webview) accepted only with unforgeable same-origin Sec-Fetch-Site metadata; Origin==Referer fallback (tunnels that rewrite both) also requires Sec-Fetch-Site same-origin; explicit cross-site metadata → 403 with [csrf] JSON diagnostic logged.
+- Hardened sessions for cookie-blocked embeds: login response now includes the same HMAC-signed token, client stores it (src/lib/auth-client.ts, localStorage origin-scoped) and apiFetch sends Authorization: Bearer; getSession accepts Bearer OR HttpOnly cookie; apiFetch clears stored token on 401; logout clears it (AdminDashboard). Cookies remain SameSite=Lax primary path.
+- Security matrix verified via curl: cross-site attack (browser metadata) → 403; sandboxed-iframe attack (null+cross-site) → 403; tunnel-rewritten Host → 200; X-Forwarded-Host → 200; preview iframe null+same-origin → 200; wrong password → 401; brute-force regression: 5 wrong → lock, 6th with correct password → 429 «۱۵ دقیقه».
+- Real-browser attack test: throwaway evil page on :4444, Chromium cross-site fetch → server logged [csrf] rejection (Sec-Fetch-Site: same-site) → 403; same-origin control → 401 (CSRF passed, creds checked).
+- agent-browser E2E: admin/admin123 → dashboard (16 items), logout → login view + token cleared, localStorage token present while logged in; public menu page unaffected; console clean; bun run lint clean.
+
+Stage Summary:
+- Root cause: origin check was strict Host==Origin, broken by preview tunnel Host rewriting. Fix is proxy-aware + fetch-metadata hardened, and admin auth now works in cookie-less embedded contexts via the signed Bearer fallback. Brute-force lockout, HMAC session verification, and CSRF rejection (403+diagnostics) all intact and regression-tested.
+- Note for deployers: for a custom domain behind unknown proxies, browsers send correct metadata automatically — no config change needed; Host/X-Forwarded-Host/Sec-Fetch-Site/Referer consistency is all that is checked.

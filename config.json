@@ -1,14 +1,14 @@
 {
   "restaurant": {
-    "name": "لام‌فود",
+    "name": "لم‌فود",
     "nameEn": "LamFood",
     "tagline": "طعم اصیل، لحظه‌های خوش",
     "logo": "/uploads/logo.png",
     "heroImage": "/uploads/hero.png",
     "about": "لام‌فود از سال ۱۳۹۵ با عشق به طعم‌های اصیل و مواد اولیه‌ی تازه شروع به کار کرد. ما هر روز بهترین مواد محلی را انتخاب می‌کنیم تا از صبحانه‌ی دلنشین تا برگرهای ذغالی، پیتزای ایتالیایی و قهوه‌ی تازه‌دم، بهترین‌ها را برای شما آماده کنیم.",
-    "openTimeText": "همه روزه از ۱۰ صبح تا ۱۲ شب",
-    "openHourFrom": "10:00",
-    "openHourTo": "24:00",
+    "openTimeText": "همه روزه از 7:30 صبح تا ۱۱ شب",
+    "openHourFrom": "07:30",
+    "openHourTo": "23:00",
     "phone": "02191001234",
     "whatsapp": "989121234567",
     "address": "تهران، خیابان ولیعصر، بالاتر از پارک ساعی، پلاک ۱۲، لام‌فود",
@@ -16,7 +16,7 @@
       "lat": 35.7562,
       "lng": 51.4103
     },
-    "instagram": "https://instagram.com/lamfood.example",
+    "instagram": "https://instagram.com/lamfood.ir",
     "snappfood": "https://snappfood.ir/restaurant/menu/example"
   },
   "admin": {
