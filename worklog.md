@@ -526,3 +526,149 @@ notifications — high-impact for restaurant ops; a 30s poll + toast is
 the cheap version) or #5 (public order tracking page — small, user-
 visible, builds on the order code we just shipped). #6 is a content fix
 the admin can do themselves.
+
+---
+Task ID: 5
+Agent: main (webDevReview — cron-triggered round 4)
+Task: QA the current state via agent-browser, fix any bugs found, then add
+new features and styling polish. Mandatory: improve styling with more
+details and add more features/functionality.
+
+## Current project status (assessment at start of round)
+- All previous work pushed (commits `77fe475` → `8bab00d`): 12 categories,
+  theme bug fix, CategoryGrid, featured items, item details dialog,
+  back-to-top, admin featured toggle, dark mode, search filters, image
+  MIME fix, hero polish, order persistence, admin Orders tab, admin dark
+  mode, hero dark overlay polish.
+- Dev server running on port 3000; 24 items seeded (6 featured); 2 orders
+  in DB from round 4 QA.
+- /admin login works (admin/admin123).
+- Round-4 handover recommended: #4 order notifications, #5 public order
+  tracking page, #6 hero content (admin-only).
+
+## QA findings (via agent-browser + VLM)
+- ✅ All previous features working: 24/24 images load, dark mode toggle
+  (public + admin), search filters, featured section, item details dialog,
+  order submission → admin Orders tab.
+- ⚠️ VLM feedback on round-4 admin Orders tab (carried forward as polish):
+  * Order cards had the total price shown only as a small inline span —
+    not prominent enough for an admin scan.
+  * Verdict was MINOR_ISSUES.
+- ⚠️ Gaps (carried over from round 4):
+  * Admin had to manually refresh the Orders tab to see new orders.
+  * Customer had no way to check their order status after submission.
+
+## Goals / completed modifications / verification
+
+### New feature: public order tracking page (#5)
+- **API** (`src/app/api/orders/track/route.ts`): public GET endpoint.
+  - Looks up an order by `publicCode`; normalizes suffix (e.g. "7TE6W" →
+    "LF-7TE6W") so customers can type either form.
+  - Returns a trimmed DTO (no `customerIp`).
+  - 404 on not-found, 400 on invalid code.
+- **Page** (`src/app/track/page.tsx`): full public tracking page with:
+  - Search form (code input + submit). Auto-loads when URL has
+    `?code=LF-XXXXX` (the basket success chip links here).
+  - **Status timeline** (5 steps: NEW → SEEN → PREPARING → READY →
+    DELIVERED) with color-coded icon circles + connector lines.
+    CANCELLED renders a separate red notice.
+  - Order items list (image + name + qty + line total) + order total.
+  - Customer note (if any).
+  - Idle / loading / not-found / error / found states.
+- **BasketSheet**: success chip now includes a "پیگیری وضعیت سفارش"
+  link to `/track?code=LF-XXXXX` — so the customer can track their order
+  immediately after submitting.
+- **MenuFooter**: added a "پیگیری سفارش" link (with PackageSearch icon)
+  to the footer quick-links nav so customers can track a previous order
+  any time.
+
+### New feature: admin order notifications (#4)
+- **Hook** (`src/hooks/use-new-orders.ts`): a 30s poll hook that:
+  - GETs `/api/admin/orders?status=NEW&limit=50` every 30s.
+  - Deduplicates order codes via a ref-set; fires `onNew` for each
+    newly-arrived code (NOT the existing backlog on first poll — so
+    the admin doesn't get a toast storm when they open the dashboard).
+  - Skips polling when the tab is hidden (Page Visibility API);
+    resumes immediately when the tab becomes visible again.
+  - Silent on 401 (parent redirects) and transient network errors.
+- **AdminDashboard**: wires the hook. The Orders tab trigger now shows
+  a pulsing accent badge with the new-count (`animate-pulse bg-accent`).
+  Toasts fire for new orders ONLY when the admin is NOT already on the
+  Orders tab (so they're alerted but not spammed while managing orders).
+  Also tracks `activeTab` via Tabs `value`/`onValueChange` so the toast
+  logic knows which tab is active.
+
+### Styling polish (mandatory)
+- **OrdersManager order cards** (`src/components/admin/OrdersManager.tsx`):
+  - **Status stripe**: a color-coded stripe on the right edge of each
+    card (amber=NEW, sky=SEEN, orange=PREPARING, emerald=READY,
+    primary=DELIVERED, destructive=CANCELLED). VLM round 4 noted the
+    status badge was the only color cue — the stripe gives at-a-glance
+    scanning.
+  - **Prominent total**: the footer now stacks a small "مجموع" label
+    over a large `text-base font-extrabold` total value (was a small
+    inline span before). VLM round 4 specifically noted the total was
+    missing from the card view.
+- **MenuSection** (`src/components/menu/MenuSection.tsx`): section
+  headers now have a subtle accent underline (gradient from
+  `accent/40` to transparent) for visual rhythm between sections;
+  category icon container gets `ring-1 ring-accent/20` for better
+  definition.
+
+### Verification
+- Lint: `bun run lint` → 0 errors (after fixing one initial
+  `set-state-in-effect` violation in the track page by deferring the
+  initial lookup to a microtask + using a ref flag).
+- Endpoints: `GET /` 200, `GET /admin` 200, `GET /track` 200,
+  `GET /api/orders/track?code=LF-7TE6W` 200 (full order, no IP),
+  `GET /api/orders/track?code=LF-INVALID` 404,
+  `GET /api/orders/track?code=7TE6W` 200 (auto-normalized to LF-7TE6W),
+  `GET /api/admin/orders?status=NEW&limit=50` 200 (poll endpoint).
+- agent-browser:
+  * **Track page**: empty state renders; lookup `LF-7TE6W` shows
+    timeline (5 steps), 2 item rows, status badge "جدید"; invalid code
+    → not-found state; URL param `?code=LF-7TE6W` auto-loads on mount.
+  * **Admin notifications**: created a new order from the public menu →
+    admin Orders tab badge shows "۲" (2 new); poll confirmed in dev.log
+    (GET /api/admin/orders?status=NEW&limit=50 every 30s). Badge uses
+    `animate-pulse bg-accent` for a subtle attention draw.
+  * **Polished order cards**: status stripe + prominent total confirmed
+    via DOM inspection (`bg-amber-500` stripe for NEW, `text-base
+    font-extrabold` total). VLM review: **OK** (up from MINOR_ISSUES
+    in round 4).
+  * **Track page VLM review**: MINOR_ISSUES (only note was a misread
+    of the decorative search icon as clickable — it's inside the Card
+    header, not a button; the actual submit button is clearly styled).
+  * No console errors, no page errors.
+
+## Commit & push
+- Commit `67d1930 feat(orders): public tracking page + admin
+  notifications + polish` (8 files, +787 / -19).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+## Unresolved issues / risks & next-phase recommendations
+1. **No item options/addons** — e.g. burger size, extra cheese, spiciness.
+   Would need a related `ItemOption` model and a more complex basket line.
+   (Carried over from round 4.)
+2. **ItemForm image upload** requires the user to pick a file or paste a
+   URL; there's no "pick from existing uploads" media library browser.
+   (Carried over from round 4.)
+3. **Search is still name/description only** — could add search-by-category
+   and a popularity sort (would need a per-item view/add counter).
+   (Carried over from round 4.)
+4. **Order notifications are poll-based** (30s). For true real-time push,
+   could add a WebSocket mini-service (the sandbox already has websocket
+   support per the README). The current poll is cheap (one indexed query)
+   and skips when the tab is hidden, so it's fine for a single-instance
+   deployment.
+5. **Customer order tracking has no "refresh" button** — the page loads
+   the order once. A "به‌روزرسانی" button or auto-poll would let the
+   customer see status changes without manual reload.
+6. **Content mismatch** (VLM-flagged, pre-existing): the hero text is
+   Persian/Iranian cuisine but the hero image shows pizza/pasta/burgers.
+   The admin can fix this by changing `heroImage` in Settings.
+
+Recommended priority for the next 15-min round: pick #5 (track page
+auto-refresh — small, builds on the page we just shipped) or #1 (item
+options/addons — bigger but high-impact for a real restaurant). #6 is a
+content fix the admin can do themselves.
