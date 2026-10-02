@@ -11,7 +11,7 @@
     "openHourTo": "23:30",
     "phone": "0919392595",
     "whatsapp": "989190392595",
-    "address": "پردیس، بلوار شهدای خدمت، بلوار شهید قاسم سلیمانی،پلاک ۱۶، لم فود",
+    "address": "پردیس، فاز ۱، بلوار شهدای خدمت، بلوار شهید قاسم سلیمانی،پلاک ۱۶، لم فود",
     "location": {
       "lat": 35.741341,
       "lng": 51.817077
@@ -19,12 +19,12 @@
     "instagram": "https://instagram.com/lamfood.ir",
     "snappfood": "https://snappfood.ir/restaurant/menu/example",
     "theme": {
-      "primary": "#166B73",
-      "primaryForeground": "#fbfffe",
+      "primary": "#362417",
+      "primaryForeground": "#E8EEF2",
       "accent": "#faa916",
       "accentForeground": "#2b1d02",
-      "background": "#fbfffe",
-      "foreground": "#0d3b41"
+      "background": "#E8EEF2",
+      "foreground": "#402B0D"
     }
   },
   "admin": {

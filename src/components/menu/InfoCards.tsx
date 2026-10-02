@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { Bike, Clock, Instagram, Info, MapPin, Phone } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import type { RestaurantConfig } from "@/lib/types"
+import { Bike, Clock, Instagram, Info, MapPin, Phone } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import type { RestaurantConfig } from "@/lib/types";
 
-const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"]
+const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
 
 function toFaDigits(value: string): string {
-  return value.replace(/\d/g, (d) => FA_DIGITS[Number(d)])
+  return value.replace(/\d/g, (d) => FA_DIGITS[Number(d)]);
 }
 
 function OpenBadge({ isOpen }: { isOpen: boolean }) {
@@ -26,7 +26,7 @@ function OpenBadge({ isOpen }: { isOpen: boolean }) {
       />
       {isOpen ? "الان باز است" : "الان بسته است"}
     </span>
-  )
+  );
 }
 
 function CardIcon({ icon: Icon }: { icon: typeof Clock }) {
@@ -34,19 +34,27 @@ function CardIcon({ icon: Icon }: { icon: typeof Clock }) {
     <div className="w-fit rounded-xl bg-primary/10 p-2.5 text-primary">
       <Icon className="h-5 w-5" aria-hidden />
     </div>
-  )
+  );
 }
 
 interface InfoCardsProps {
-  config: RestaurantConfig
+  config: RestaurantConfig;
   /** null = not computed yet (pre-mount) */
-  isOpenNow: boolean | null
-  onOpenLocation: () => void
+  isOpenNow: boolean | null;
+  onOpenLocation: () => void;
 }
 
-export default function InfoCards({ config, isOpenNow, onOpenLocation }: InfoCardsProps) {
+export default function InfoCards({
+  config,
+  isOpenNow,
+  onOpenLocation,
+}: InfoCardsProps) {
   return (
-    <section id="info" aria-labelledby="info-heading" className="mx-auto w-full max-w-6xl px-4 pb-2 pt-8 sm:pt-10">
+    <section
+      id="info"
+      aria-labelledby="info-heading"
+      className="mx-auto w-full max-w-6xl px-4 pb-2 pt-8 sm:pt-10"
+    >
       <h2 id="info-heading" className="mb-4 text-xl font-extrabold sm:text-2xl">
         اطلاعات رستوران
       </h2>
@@ -55,7 +63,9 @@ export default function InfoCards({ config, isOpenNow, onOpenLocation }: InfoCar
         <Card className="gap-3 p-5">
           <CardIcon icon={Clock} />
           <h3 className="font-bold">ساعت کاری</h3>
-          <p className="text-sm leading-6 text-muted-foreground">{config.openTimeText}</p>
+          <p className="text-sm leading-6 text-muted-foreground">
+            {config.openTimeText}
+          </p>
           {isOpenNow !== null && <OpenBadge isOpen={isOpenNow} />}
         </Card>
 
@@ -64,8 +74,14 @@ export default function InfoCards({ config, isOpenNow, onOpenLocation }: InfoCar
           <Card className="gap-3 p-5">
             <CardIcon icon={Phone} />
             <h3 className="font-bold">تلفن</h3>
-            <p className="text-sm text-muted-foreground">برای سفارش تلفنی با ما تماس بگیرید.</p>
-            <Button asChild variant="secondary" className="h-10 w-fit rounded-full px-4">
+            <p className="text-sm text-muted-foreground">
+              برای سفارش تلفنی با ما تماس بگیرید.
+            </p>
+            <Button
+              asChild
+              variant="secondary"
+              className="h-10 w-fit rounded-full px-4"
+            >
               <a href={`tel:${config.phone}`}>
                 <Phone className="h-4 w-4" aria-hidden />
                 <span dir="ltr">{toFaDigits(config.phone)}</span>
@@ -79,7 +95,9 @@ export default function InfoCards({ config, isOpenNow, onOpenLocation }: InfoCar
           <Card className="gap-3 p-5">
             <CardIcon icon={MapPin} />
             <h3 className="font-bold">آدرس</h3>
-            <p className="text-sm leading-6 text-muted-foreground">{config.address}</p>
+            <p className="text-sm leading-6 text-muted-foreground">
+              {config.address}
+            </p>
             <Button
               variant="outline"
               className="h-10 w-fit rounded-full px-4"
@@ -97,10 +115,18 @@ export default function InfoCards({ config, isOpenNow, onOpenLocation }: InfoCar
             <CardIcon icon={Instagram} />
             <h3 className="font-bold">اینستاگرام</h3>
             <p className="text-sm text-muted-foreground">
-              تازه‌های آشپزخانه ما را در اینستاگرام دنبال کنید.
+              ما را در اینستاگرام دنبال کنید.
             </p>
-            <Button asChild variant="secondary" className="h-10 w-fit rounded-full px-4">
-              <a href={config.instagram} target="_blank" rel="noopener noreferrer">
+            <Button
+              asChild
+              variant="secondary"
+              className="h-10 w-fit rounded-full px-4"
+            >
+              <a
+                href={config.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Instagram className="h-4 w-4" aria-hidden />
                 مشاهده پیج
               </a>
@@ -116,8 +142,16 @@ export default function InfoCards({ config, isOpenNow, onOpenLocation }: InfoCar
             <p className="text-sm text-muted-foreground">
               سفارش آنلاین با تحویل سریع پیک اسنپ‌فود.
             </p>
-            <Button asChild variant="secondary" className="h-10 w-fit rounded-full px-4">
-              <a href={config.snappfood} target="_blank" rel="noopener noreferrer">
+            <Button
+              asChild
+              variant="secondary"
+              className="h-10 w-fit rounded-full px-4"
+            >
+              <a
+                href={config.snappfood}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Bike className="h-4 w-4" aria-hidden />
                 سفارش آنلاین
               </a>
@@ -130,10 +164,12 @@ export default function InfoCards({ config, isOpenNow, onOpenLocation }: InfoCar
           <Card className="gap-3 p-5 sm:col-span-2 lg:col-span-1">
             <CardIcon icon={Info} />
             <h3 className="font-bold">درباره ما</h3>
-            <p className="text-sm leading-7 text-muted-foreground">{config.about}</p>
+            <p className="text-sm leading-7 text-muted-foreground">
+              {config.about}
+            </p>
           </Card>
         )}
       </div>
     </section>
-  )
+  );
 }
