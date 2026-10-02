@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 
-import { ChefHat, ExternalLink, Loader2, LogOut, Package, Settings, UtensilsCrossed } from "lucide-react"
+import { ChefHat, ExternalLink, LayoutDashboard, Loader2, LogOut, Package, Settings, UtensilsCrossed } from "lucide-react"
 import { toast } from "sonner"
 
+import DashboardStats from "@/components/admin/DashboardStats"
 import ItemsManager from "@/components/admin/ItemsManager"
 import OrdersManager from "@/components/admin/OrdersManager"
 import SettingsForm from "@/components/admin/SettingsForm"
@@ -145,10 +146,14 @@ export default function AdminDashboard({
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          defaultValue="items"
+          defaultValue="dashboard"
           className="mt-4"
         >
-          <TabsList className="h-11 w-full sm:h-10 sm:w-auto">
+          <TabsList className="h-11 w-full overflow-x-auto sm:h-10 sm:w-auto">
+            <TabsTrigger value="dashboard" className="gap-2 px-4 text-sm">
+              <LayoutDashboard className="size-4" aria-hidden />
+              داشبورد
+            </TabsTrigger>
             <TabsTrigger value="items" className="gap-2 px-4 text-sm">
               <UtensilsCrossed className="size-4" aria-hidden />
               آیتم‌های منو
@@ -167,6 +172,10 @@ export default function AdminDashboard({
               تنظیمات رستوران
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="dashboard" className="mt-4">
+            <DashboardStats onUnauthorized={onUnauthorized} />
+          </TabsContent>
 
           <TabsContent value="items" className="mt-4">
             <ItemsManager onUnauthorized={onUnauthorized} />
