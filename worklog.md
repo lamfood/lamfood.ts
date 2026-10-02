@@ -672,3 +672,153 @@ Recommended priority for the next 15-min round: pick #5 (track page
 auto-refresh — small, builds on the page we just shipped) or #1 (item
 options/addons — bigger but high-impact for a real restaurant). #6 is a
 content fix the admin can do themselves.
+
+---
+Task ID: 6
+Agent: main (webDevReview — cron-triggered round 5)
+Task: QA the current state via agent-browser, fix any bugs found, then add
+new features and styling polish. Mandatory: improve styling with more
+details and add more features/functionality.
+
+## Current project status (assessment at start of round)
+- All previous work pushed (commits `77fe475` → `67d1930`): 12 categories,
+  theme bug fix, CategoryGrid, featured items, item details dialog,
+  back-to-top, admin featured toggle, dark mode (public + admin),
+  search filters, image MIME fix, hero polish, order persistence,
+  admin Orders tab + notifications, public tracking page, order card
+  status stripe + prominent total.
+- Dev server running on port 3000; 24 items seeded (6 featured); 3 orders
+  in DB from round 5 QA.
+- /admin login works (admin/admin123).
+- Round-5 handover recommended: #5 track page auto-refresh, #1 item
+  options/addons.
+
+## QA findings (via agent-browser + VLM)
+- ✅ All previous features working: 24/24 images load, dark mode toggle
+  (public + admin), search filters, featured section, item details dialog,
+  order submission → admin Orders tab + notifications, public tracking
+  page with timeline.
+- ⚠️ Gaps (carried over from round 5):
+  * Track page had no auto-refresh — customer had to manually reload to
+    see status changes.
+  * No item options/addons — a real restaurant needs size/spice/extra
+    cheese selectors.
+
+## Goals / completed modifications / verification
+
+### New feature: item options/addons (#1 — highest-impact recommendation)
+Full round-trip from admin definition → customer selection → order snapshot.
+
+**Schema + types**
+- `prisma/schema.prisma`: added `optionsJson String @default("[]")` to
+  MenuItem. Stores an array of option groups (e.g. size, spice level) as
+  JSON — no join table needed for a simple fixed-form menu.
+- `src/lib/types.ts`: new `ItemOptionDTO` + `ItemOptionGroupDTO` types.
+  Added `options: ItemOptionDTO[]` to `MenuItemDTO`. Added optional
+  `selectedOptions?: string[]` to `OrderLineDTO` (records which options the
+  customer picked, for display in the order snapshot).
+- `src/lib/menu-items.ts` (new): `parseOptionsJson()` (defensive —
+  empty/"[]"/malformed JSON → empty array) + `menuItemToDTO()` (converts
+  a Prisma row + its optionsJson into the public DTO with parsed options).
+
+**API**
+- `src/app/api/admin/items/route.ts`: zod schemas for option groups +
+  options (id, name, price, isDefault). POST validates + serializes to
+  JSON. GET returns parsed options.
+- `src/app/api/admin/items/[id]/route.ts`: PUT serializes options +
+  returns parsed.
+- `src/app/api/menu/route.ts`: returns parsed options via `menuItemToDTO`.
+- `src/app/api/orders/route.ts`: order line schema accepts optional
+  `selectedOptions: string[]` (max 10, max 60 chars each).
+
+**Admin UI**
+- `src/components/admin/ItemForm.tsx`: new `OptionsEditor` component —
+  the admin can add/remove option groups (each with a label + a list of
+  options), add/remove options within a group (name + price delta +
+  isDefault radio), and the whole thing serializes on save.
+- `src/components/admin/ItemsManager.tsx`: `toggleAvailable` +
+  `toggleFeatured` now include `options: item.options` in the PUT payload
+  (so toggling a flag doesn't wipe the options).
+
+**Customer UI**
+- `src/lib/basket-store.ts`: basket lines are now keyed by a composite
+  `${itemId}|${selectedOptions.join(",")}` (via `basketLineKey()`), so
+  the same item with different option combinations becomes separate
+  basket lines. `BasketAddItem` + `BasketLine` now carry optional
+  `selectedOptions?: string[]`.
+- `src/components/menu/ItemDetailsDialog.tsx`: rewritten to render
+  option groups as radio selectors. The effective price (base +
+  selected option deltas) updates live. On add-to-basket, the selected
+  option names + effective price are passed to the basket store. The
+  dialog remounts per item (`key={item.id}`) so option state doesn't
+  leak.
+- `src/components/menu/BasketSheet.tsx`: basket lines show the selected
+  options as a small primary-tinted line below the item name. The
+  WhatsApp message includes the selected options in parentheses per
+  line (e.g. «چیزبرگر (بزرگ) — ۲۵۰ هزار تومان»). The order-submit
+  payload passes `selectedOptions` to the API.
+
+**Admin order detail + track page**
+- `src/components/admin/OrdersManager.tsx`: order detail dialog shows
+  selected options per line.
+- `src/app/track/page.tsx`: order line rendering shows selected options.
+
+### New feature: track page auto-refresh (#5)
+- `src/app/track/page.tsx`: added a 30s auto-poll that:
+  - Re-fetches the order via the track API (silent — no loading state).
+  - Stops polling once the order reaches a terminal state (DELIVERED or
+    CANCELLED) — no point refreshing a finished order.
+  - Skips ticks when the tab is hidden (Page Visibility API); resumes
+    immediately when visible.
+- Added a manual refresh button (RefreshCw icon, spins while refreshing)
+  in the order header card.
+- Added a live "auto-poll" status row: a pulsing emerald dot + "هر ۳۰
+  ثانیه به‌روزرسانی خودکار" when active, or "سفارش نهایی شده —
+  به‌روزرسانی متوقف شد" when terminal.
+- Added "آخرین به‌روزرسانی: HH:MM:SS" timestamp that updates on every
+  refresh (manual or auto).
+
+### Verification (agent-browser end-to-end)
+- **Admin ItemForm**: added a "اندازه" (size) option group to the
+  cheeseburger with two options: "کوچک" (+0, default) + "بزرگ" (+50).
+  Saved → API returns the group correctly.
+- **Customer item dialog**: opened the cheeseburger → option group
+  rendered with 2 radio buttons → selected "بزرگ" → live price updated
+  from ۲۰۰ to ۲۵۰ → added to basket → basket line shows "بزرگ" + 250.
+- **Submit order**: order `LF-6WXQV` persisted with `selectedOptions:
+  ["بزرگ"]` in the line snapshot → admin order detail shows "بزرگ" next
+  to the cheeseburger line.
+- **Track page**: `LF-6WXQV` loads; auto-poll hint visible; manual refresh
+  button works; last-updated timestamp shows; selected option "بزرگ"
+  shown per line.
+- **Lint**: 0 errors. No console errors.
+
+## Commit & push
+- Commit `8c30ce1 feat: item options/addons + track page auto-refresh`
+  (14 files, +850 / -164).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+## Unresolved issues / risks & next-phase recommendations
+1. **ItemForm image upload** requires the user to pick a file or paste a
+   URL; there's no "pick from existing uploads" media library browser.
+   (Carried over from round 4.)
+2. **Search is still name/description only** — could add search-by-category
+   and a popularity sort (would need a per-item view/add counter).
+   (Carried over from round 4.)
+3. **Order notifications are poll-based** (30s). For true real-time push,
+   could add a WebSocket mini-service. (Carried over from round 5.)
+4. **Option groups are radio-only** (one selection per group). For add-ons
+   like "extra cheese" or "no ice" that are checkboxes, would need a
+   `multiSelect` flag on the group. Current single-select covers size +
+   spice level (the most common cases).
+5. **No order history for the customer** — the customer can track a
+   single order by code, but can't see "my previous orders". Could add
+   a localStorage-backed "recent orders" list on the /track page.
+6. **Content mismatch** (VLM-flagged, pre-existing): the hero text is
+   Persian/Iranian cuisine but the hero image shows pizza/pasta/burgers.
+   The admin can fix this by changing `heroImage` in Settings.
+
+Recommended priority for the next 15-min round: pick #5 (customer order
+history — small, builds on /track) or #4 (multi-select option groups —
+medium, builds on the options we just shipped). #6 is a content fix the
+admin can do themselves.
