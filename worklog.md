@@ -1472,3 +1472,50 @@ Task: Fix 3 user-reported issues:
 - Commit `093d67c fix: admin navbar mobile responsive + mobile theme
   toggle fix` (3 files, +36 / -31).
 - Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+---
+Task ID: 14
+Agent: main (user-requested fixes)
+Task: Fix 2 user-reported issues:
+1. Admin panel exit button not fixed
+2. Check all admin panel buttons for problems
+
+## Root cause
+The header buttons (مشاهده منو, ThemeToggle, خروج) used `size="icon"` which
+sets a FIXED width+height (`size-9` = 36px). On desktop where text labels
+are visible (`<span className="hidden sm:inline">`), the fixed 44px width
+(from `sm:size-11`) clipped the text — "مشاهده منو" and "خروج" couldn't
+display properly.
+
+## Fix
+Removed `size="icon"` from all header buttons. Replaced with explicit
+`h-9 w-9 p-0` (mobile, icon-only, 36px) + `sm:h-11 sm:w-auto sm:px-4`
+(desktop, auto width to fit text, 44px height).
+
+### 1. AdminDashboard.tsx — header buttons
+- "مشاهده منو" Link: `h-9 w-9 p-0 sm:h-11 sm:w-auto sm:px-4`
+- ThemeToggle: `h-9 w-9 sm:h-11 sm:w-11` (stays icon-only on all sizes)
+- "خروج" Button: `h-9 w-9 p-0 sm:h-11 sm:w-auto sm:px-4`
+- Result on desktop: "مشاهده منو" w=117px, "خروج" w=81px (auto-sized ✓)
+- Result on mobile: all 36x36px, no overflow ✓
+
+### 2. OrdersManager.tsx — toolbar buttons
+- Filter dropdown: `w-[140px] sm:w-[180px]` (narrower on mobile)
+- Height: `h-9 sm:h-11` (compact on mobile)
+- Gap: `gap-1.5 sm:gap-2`
+- Refresh button: `h-9 w-9 sm:h-11 sm:w-11` (icon-only on mobile)
+- Clear-all button: `h-9 w-9 sm:h-11 sm:w-auto sm:px-4` (icon-only on mobile)
+
+### 3. ItemsManager.tsx — toolbar gap
+- Gap reduced from `gap-3` to `gap-2 sm:gap-3` for tighter mobile layout
+
+## Verification
+- Desktop (1280px): "مشاهده منو"=117px, toggle=44px, "خروج"=81px ✓
+- Mobile (375px): all header buttons 36x36, no overflow ✓
+- Mobile Orders: filter=140px, refresh=36px, no overflow ✓
+- Lint: 0 errors
+
+## Commit & push
+- Commit `df7af51 fix: admin header buttons auto-size on desktop + mobile
+  toolbar polish` (3 files, +11 / -11).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
