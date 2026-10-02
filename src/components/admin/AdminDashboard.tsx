@@ -112,19 +112,18 @@ export default function AdminDashboard({
             <Badge className="hidden shrink-0 sm:inline-flex">پنل مدیریت</Badge>
           </div>
 
-          {/* Right: actions — compact on mobile */}
+          {/* Right: actions — compact icon-only on mobile, full with text on desktop */}
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-            <Button asChild variant="ghost" size="icon" className="size-9 shrink-0 rounded-full sm:size-11">
+            <Button asChild variant="ghost" className="h-9 w-9 shrink-0 rounded-full p-0 sm:h-11 sm:w-auto sm:px-4">
               <Link href="/" aria-label="مشاهده منو">
                 <ExternalLink className="size-4" aria-hidden />
                 <span className="hidden sm:inline">مشاهده منو</span>
               </Link>
             </Button>
-            <ThemeToggle className="size-9 sm:size-11" />
+            <ThemeToggle className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11" />
             <Button
               variant="outline"
-              size="icon"
-              className="size-9 shrink-0 rounded-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive sm:size-11"
+              className="h-9 w-9 shrink-0 rounded-full border-destructive/40 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive sm:h-11 sm:w-auto sm:px-4"
               onClick={() => void handleLogout()}
               disabled={loggingOut}
               aria-label="خروج"

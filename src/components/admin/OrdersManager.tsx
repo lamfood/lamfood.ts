@@ -315,13 +315,13 @@ export default function OrdersManager({
             />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Select
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v as OrderStatus | "ALL")}
           >
-            <SelectTrigger id="order-status-filter" className="h-11 w-[180px] gap-2" aria-label="فیلتر وضعیت">
-              <Filter className="size-4 text-muted-foreground" aria-hidden />
+            <SelectTrigger id="order-status-filter" className="h-9 w-[140px] gap-1.5 text-xs sm:h-11 sm:w-[180px] sm:gap-2 sm:text-sm" aria-label="فیلتر وضعیت">
+              <Filter className="size-3.5 sm:size-4 text-muted-foreground" aria-hidden />
               <SelectValue placeholder="همه وضعیت‌ها" />
             </SelectTrigger>
             <SelectContent>
@@ -333,13 +333,14 @@ export default function OrdersManager({
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => void load()} className="h-11" aria-label="بارگذاری مجدد">
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11" onClick={() => void load()} aria-label="بارگذاری مجدد">
             <RefreshCcw className="size-4" aria-hidden />
           </Button>
           {orders && orders.length > 0 ? (
             <Button
               variant="outline"
-              className="h-11 gap-2 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              size="icon"
+              className="h-9 w-9 shrink-0 rounded-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive sm:h-11 sm:w-auto sm:px-4"
               onClick={() => setClearOpen(true)}
               aria-label="پاک‌سازی همه سفارش‌ها"
             >

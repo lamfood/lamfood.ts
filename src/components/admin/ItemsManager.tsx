@@ -210,7 +210,7 @@ export default function ItemsManager({ onUnauthorized }: { onUnauthorized: () =>
     <div className="grid gap-4">
       {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 items-center gap-3">
+        <div className="flex flex-1 items-center gap-2 sm:gap-3">
           <Badge variant="secondary" className="h-8 shrink-0 px-3 text-sm">
             {faNumber(filtered.length)} آیتم
           </Badge>
