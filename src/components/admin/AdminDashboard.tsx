@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 
-import { ChefHat, ExternalLink, Loader2, LogOut, Settings, UtensilsCrossed } from "lucide-react"
+import { ChefHat, ExternalLink, Loader2, LogOut, Package, Settings, UtensilsCrossed } from "lucide-react"
 import { toast } from "sonner"
 
 import ItemsManager from "@/components/admin/ItemsManager"
+import OrdersManager from "@/components/admin/OrdersManager"
 import SettingsForm from "@/components/admin/SettingsForm"
+import ThemeToggle from "@/components/menu/ThemeToggle"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -95,9 +97,10 @@ export default function AdminDashboard({
             <Button asChild variant="ghost" className="h-11">
               <Link href="/">
                 <ExternalLink className="size-4" aria-hidden />
-                <span>مشاهده منو</span>
+                <span className="hidden sm:inline">مشاهده منو</span>
               </Link>
             </Button>
+            <ThemeToggle />
             <Button
               variant="outline"
               className="h-11 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -128,6 +131,10 @@ export default function AdminDashboard({
               <UtensilsCrossed className="size-4" aria-hidden />
               آیتم‌های منو
             </TabsTrigger>
+            <TabsTrigger value="orders" className="gap-2 px-4 text-sm">
+              <Package className="size-4" aria-hidden />
+              سفارش‌ها
+            </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2 px-4 text-sm">
               <Settings className="size-4" aria-hidden />
               تنظیمات رستوران
@@ -136,6 +143,10 @@ export default function AdminDashboard({
 
           <TabsContent value="items" className="mt-4">
             <ItemsManager onUnauthorized={onUnauthorized} />
+          </TabsContent>
+
+          <TabsContent value="orders" className="mt-4">
+            <OrdersManager onUnauthorized={onUnauthorized} />
           </TabsContent>
 
           <TabsContent value="settings" className="mt-4">

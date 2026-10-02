@@ -51,8 +51,8 @@ export default function Hero({ config, isOpenNow, onOpenLocation }: HeroProps) {
         aria-hidden
         className={
           hasHeroImage
-            ? "absolute inset-0 -z-10 bg-gradient-to-b from-primary/95 via-primary/85 to-primary/75"
-            : "absolute inset-0 -z-10 bg-gradient-to-b from-primary via-primary/90 to-primary/95"
+            ? "absolute inset-0 -z-10 bg-gradient-to-b from-primary/95 via-primary/85 to-primary/80 dark:from-black/85 dark:via-black/65 dark:to-black/80"
+            : "absolute inset-0 -z-10 bg-gradient-to-b from-primary via-primary/90 to-primary/95 dark:from-primary/85 dark:via-primary/80 dark:to-primary/85"
         }
       />
       {/* Subtle texture grid overlay for depth — barely visible on photo, more
@@ -60,6 +60,13 @@ export default function Hero({ config, isOpenNow, onOpenLocation }: HeroProps) {
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10 opacity-[0.04] [background-image:linear-gradient(rgba(255,255,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.5)_1px,transparent_1px)] [background-size:32px_32px]"
+      />
+      {/* In dark mode: an extra scrim behind the text container so the food
+          photography doesn't compete with the hero copy. Pure CSS, no perf
+          cost. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 hidden h-full bg-gradient-to-b from-black/30 via-transparent to-black/30 dark:block"
       />
       {/* Decorative accent blur circles for depth */}
       <div

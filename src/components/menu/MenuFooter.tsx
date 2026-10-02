@@ -26,6 +26,8 @@ export default function MenuFooter({ config, className }: MenuFooterProps) {
     <footer
       className={`mt-auto bg-primary text-primary-foreground ${className ?? ""}`}
     >
+      {/* Subtle accent top border for visual separation */}
+      <div aria-hidden className="h-1 w-full bg-accent/60" />
       <div className="mx-auto w-full max-w-6xl px-4 pt-8 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-3">
@@ -101,7 +103,7 @@ export default function MenuFooter({ config, className }: MenuFooterProps) {
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-white/15 pt-4 text-xs">
           <p suppressHydrationWarning>
-            © {faNumber(year)} لم‌فود — تمامی حقوق محفوظ است.
+            © {faNumber(year)} {config.name} — تمامی حقوق محفوظ است.
           </p>
           <a
             href="/admin"

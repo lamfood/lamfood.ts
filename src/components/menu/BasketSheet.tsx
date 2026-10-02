@@ -1,17 +1,18 @@
 "use client"
 
 import { useState } from "react"
-import { MessageCircle, Minus, Plus, ShoppingBasket, Trash2, UtensilsCrossed } from "lucide-react"
+import { CheckCircle2, Loader2, MessageCircle, Minus, Plus, ShoppingBasket, Trash2, UtensilsCrossed } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
+import { apiFetch, ApiError } from "@/lib/api"
 import { faNumber, formatPrice } from "@/lib/format"
 import { basketCount, basketLineList, basketTotal, useBasketStore } from "@/lib/basket-store"
 import type { BasketLine } from "@/lib/basket-store"
-import type { RestaurantConfig } from "@/lib/types"
+import type { PublicOrderResponse, RestaurantConfig } from "@/lib/types"
 
 interface BasketSheetProps {
   open: boolean
@@ -54,6 +55,9 @@ export default function BasketSheet({ open, onOpenChange, config }: BasketSheetP
   const clear = useBasketStore((state) => state.clear)
   const [customerName, setCustomerName] = useState("")
   const [note, setNote] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  /** Last successful order code — shown as a success chip after submit. */
+  const [lastOrderCode, setLastOrderCode] = useState<string | null>(null)
 
   const lineList = basketLineList(lines)
   const count = basketCount(lines)
@@ -66,17 +70,56 @@ export default function BasketSheet({ open, onOpenChange, config }: BasketSheetP
     }, 250)
   }
 
-  const handleCheckout = () => {
-    if (!config.whatsapp) {
-      toast.error("شماره واتساپ رستوران ثبت نشده است؛ لطفاً تلفنی سفارش دهید.")
+  const handleCheckout = async () => {
+    if (submitting) return
+    if (lineList.length === 0) {
+      toast.error("سبد خرید شما خالی است.")
       return
     }
+
+    setSubmitting(true)
+    let publicCode: string | null = null
+    try {
+      // Persist the order first so the admin sees it in the Orders tab.
+      const data = await apiFetch<PublicOrderResponse>("/api/orders", {
+        method: "POST",
+        body: JSON.stringify({
+          lines: lineList.map((l) => ({
+            id: l.id,
+            name: l.name,
+            price: l.price,
+            qty: l.qty,
+            image: l.image,
+          })),
+          customerName: customerName.trim(),
+          note: note.trim(),
+        }),
+      })
+      publicCode = data.order.publicCode
+      setLastOrderCode(publicCode)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        toast.error(err.message)
+      } else {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "ثبت سفارش ناموفق بود؛ دوباره تلاش کنید.",
+        )
+      }
+      setSubmitting(false)
+      return
+    }
+
+    // Build the WhatsApp message with the order code so the restaurant can
+    // match the customer's message to the persisted order.
     const itemLines = lineList
       .map((line) => `• ${faNumber(line.qty)}× ${line.name} — ${formatPrice(line.price * line.qty)}`)
       .join("\n")
 
     const messageParts = [
       `سلام ${config.name} 👋`,
+      `کد سفارش: ${publicCode}`,
       "می‌خواهم این سفارش را ثبت کنم:",
       "",
       itemLines,
@@ -86,15 +129,26 @@ export default function BasketSheet({ open, onOpenChange, config }: BasketSheetP
     if (customerName.trim().length > 0) messageParts.push(`نام: ${customerName.trim()}`)
     if (note.trim().length > 0) messageParts.push(`یادداشت: ${note.trim()}`)
 
-    const url = `https://wa.me/${config.whatsapp}?text=${encodeURIComponent(messageParts.join("\n"))}`
-    window.open(url, "_blank", "noopener,noreferrer")
-    toast.success("سفارش شما آماده ارسال در واتساپ است 🎉")
+    if (config.whatsapp) {
+      const url = `https://wa.me/${config.whatsapp}?text=${encodeURIComponent(messageParts.join("\n"))}`
+      window.open(url, "_blank", "noopener,noreferrer")
+      toast.success(`سفارش ${publicCode} ثبت شد — در واتساپ ادامه دهید 🎉`)
+    } else {
+      toast.success(`سفارش ${publicCode} ثبت شد — به‌زودی با شما تماس می‌گیریم 🎉`)
+    }
+
+    // Clear the basket + form on successful submit.
+    clear()
+    setCustomerName("")
+    setNote("")
+    setSubmitting(false)
   }
 
   const handleClear = () => {
     clear()
     setCustomerName("")
     setNote("")
+    setLastOrderCode(null)
     toast.success("سبد خرید پاک شد")
   }
 
@@ -195,11 +249,30 @@ export default function BasketSheet({ open, onOpenChange, config }: BasketSheetP
 
               <Button
                 onClick={handleCheckout}
-                className="h-12 w-full rounded-xl bg-[#25D366] text-base font-bold text-white hover:bg-[#1eb856]"
+                disabled={submitting}
+                className="h-12 w-full rounded-xl bg-[#25D366] text-base font-bold text-white hover:bg-[#1eb856] disabled:opacity-70"
               >
-                <MessageCircle className="h-5 w-5" aria-hidden />
-                ثبت سفارش در واتساپ
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                    در حال ثبت سفارش…
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="h-5 w-5" aria-hidden />
+                    {config.whatsapp ? "ثبت سفارش در واتساپ" : "ثبت سفارش"}
+                  </>
+                )}
               </Button>
+
+              {lastOrderCode ? (
+                <div className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="size-4" aria-hidden />
+                  <span>
+                    کد سفارش: <span className="font-extrabold tracking-wider" dir="ltr">{lastOrderCode}</span>
+                  </span>
+                </div>
+              ) : null}
 
               <Button
                 variant="ghost"

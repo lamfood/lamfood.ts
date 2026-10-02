@@ -29,3 +29,43 @@ model MenuItem {
   @@index([category])
   @@index([featured])
 }
+
+/** Order status lifecycle. Mirrors the valuesh enum in `src/lib/types.ts`. */
+enum OrderStatus {
+  NEW
+  SEEN
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+/**
+ * A customer-submitted order. Created from the public basket checkout
+ * (POST /api/orders) and managed from the admin Orders tab.
+ *
+ * `linesJson` stores a snapshot of the basket at submission time (id, name,
+ * price, qty, image) so the order stays readable even if a MenuItem is later
+ * edited or deleted. `customerName`/`note` are optional free-text fields
+ * from the basket sheet.
+ */
+model Order {
+  id           String      @id @default(cuid())
+  /** Human-friendly short id shown to the customer and the admin
+   *  (e.g. "LF-7K3X9"). Generated server-side; unique via @@index. */
+  publicCode   String      @unique
+  status       OrderStatus @default(NEW)
+  customerName String      @default("")
+  note         String      @default("")
+  /** Snapshot of basket lines as JSON: [{id,name,price,qty,image?}, ...]. */
+  linesJson    String
+  /** Total price in «هزار تومان» units (sum of qty*price). */
+  total        Int
+  /** Originating IP for abuse triage (no PII). */
+  customerIp   String      @default("")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
