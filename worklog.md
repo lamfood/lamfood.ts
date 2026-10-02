@@ -1519,3 +1519,50 @@ Removed `size="icon"` from all header buttons. Replaced with explicit
 - Commit `df7af51 fix: admin header buttons auto-size on desktop + mobile
   toolbar polish` (3 files, +11 / -11).
 - Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+---
+Task ID: 15
+Agent: main (user-requested fixes)
+Task: Fix 2 user-reported issues:
+1. "پیشنهاد شف، نمایش در منو" toggle buttons not fixed (too small on mobile)
+2. All buttons in "edit item" dialog not fixed (not mobile-responsive)
+
+## Root cause
+The Switch component is `h-[1.15rem] w-8` = 18x32px — way too small for mobile
+touch targets (minimum 44x44px per WCAG). The ItemsManager card also crammed
+both toggles into a `grid-cols-2` on mobile, making each toggle only ~150px
+wide with a tiny 32x18px switch + `text-xs` label. The ItemForm dialog had
+similar issues — all buttons, inputs, and toggles were desktop-sized even
+on mobile.
+
+## Fix
+
+### 1. ItemsManager card toggles
+- `grid-cols-2` → `grid-cols-1 sm:grid-cols-2` (stack vertically on mobile)
+- Switch: `h-6 w-11` (44x24px) on mobile → `sm:h-[1.15rem] sm:w-8` on desktop
+- Label: `text-sm` on mobile → `sm:text-xs` on desktop
+- Container: `min-h-12` (48px) on mobile → `sm:min-h-11` (44px) on desktop
+
+### 2. ItemForm dialog — ALL buttons fixed
+- Toggle switches (نمایش در منو / پیشنهاد شف): same h-6 w-11 mobile sizing
+- "گروه جدید" button: `h-10 text-sm` on mobile (was h-8 text-xs)
+- "یا وارد کردن آدرس" + "انتخاب از کتابخانه" buttons: `h-10 text-sm` on mobile
+- "افزودن گزینه" button: `h-10 text-sm` on mobile (was h-8 text-xs)
+- Option group header: `flex-col` on mobile (stacks) → `sm:flex-row`
+- Option rows: `flex-col` on mobile → `sm:flex-row sm:flex-wrap`
+- Radio/checkbox: `size-5` (20px) on mobile → `sm:size-4` (16px)
+- All inputs: `h-11` (44px) on mobile → `sm:h-9` (36px)
+- Delete buttons: `h-11 w-11` on mobile → `sm:size-9`
+- "ذخیره آیتم" button: `h-14 text-base` (56px) on mobile → `sm:h-12`
+
+## Verification
+- ItemsManager toggles: 44x24px on mobile (was 32x18px) ✓
+- ItemForm toggles: 44x24px on mobile (was 32x18px) ✓
+- Save button: 293x56px on mobile (was 293x48px) ✓
+- VLM review: OK (no overflow, proper touch targets, RTL correct)
+- Lint: 0 errors
+
+## Commit & push
+- Commit `04dccf4 fix: toggle switches + all ItemForm buttons mobile-responsive`
+  (2 files, +30 / -26).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
