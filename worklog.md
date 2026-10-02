@@ -1427,3 +1427,48 @@ Task: Implement 5 user-requested features:
 - Commit `52ff7fd feat: admin order delete/clear-all, basket track link,
   price formatting, default light` (7 files, +244 / -19).
 - Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+---
+Task ID: 13
+Agent: main (user-requested fixes)
+Task: Fix 3 user-reported issues:
+1. Admin navbar not responsive for phone version
+2. BugFix (investigate and fix any bugs)
+3. Dark/light mode toggle on mobile not good enough
+
+## Goals / completed modifications / verification
+
+### 1. Admin navbar mobile responsiveness
+- `AdminDashboard.tsx`:
+  - Header height: h-14 on mobile (sm:h-16), padding px-3 (sm:px-6),
+    gap gap-1 (sm:gap-2).
+  - Logo: size-8 on mobile (sm:size-9).
+  - "پنل مدیریت" badge: hidden on mobile (hidden sm:inline-flex).
+  - All action buttons: size-9 on mobile (sm:size-11), icon-only on
+    mobile (text hidden via hidden sm:inline).
+  - Tabs: TabsList uses no-scrollbar + overflow-x-auto + w-full on mobile
+    (sm:overflow-visible sm:w-auto). Tab labels shortened on mobile
+    ("آیتم‌ها" instead of "آیتم‌های منو", "تنظیمات" instead of
+    "تنظیمات رستوران") via dual-span pattern. Gap reduced, px-3, text-xs.
+- Verified: all 4 tabs fit within 375px (lastTabRight=367 < 375), no
+  page overflow. VLM review: OK.
+
+### 2. BugFix
+- No runtime bugs found during QA — all features working correctly.
+
+### 3. Mobile theme toggle fix
+- `StickyCategoryNav.tsx`: ThemeToggle was `hidden sm:inline-flex` (hidden
+  on mobile). Changed to always visible with compact sizing (h-9 w-9 on
+  mobile, sm:h-11 sm:w-11). All nav buttons (search, basket, theme toggle)
+  now use compact sizing on mobile. Nav height reduced to h-14 (sm:h-16).
+- `Hero.tsx`: removed the old mobile-only floating theme toggle
+  (absolute left-3 top-3 sm:hidden). It was redundant now that the sticky
+  nav always shows the toggle — having two toggles on screen was confusing.
+- Verified: theme toggle visible in sticky nav on mobile (x=16, w=36),
+  dark mode toggles correctly (#E8EEF2 → #0b1f23 → #E8EEF2), no
+  duplicate toggle, nav fits in viewport.
+
+## Commit & push
+- Commit `093d67c fix: admin navbar mobile responsive + mobile theme
+  toggle fix` (3 files, +36 / -31).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
