@@ -309,11 +309,11 @@ export default function ItemsManager({ onUnauthorized }: { onUnauthorized: () =>
                     ) : null}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl bg-muted/50 px-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="flex min-h-12 items-center justify-between gap-2 rounded-xl bg-muted/50 px-3 sm:min-h-11">
                       <Label
                         htmlFor={`avail-${item.id}`}
-                        className="cursor-pointer text-xs text-muted-foreground"
+                        className="cursor-pointer text-sm text-muted-foreground sm:text-xs"
                       >
                         فعال در منو
                         {toggling ? (
@@ -326,12 +326,13 @@ export default function ItemsManager({ onUnauthorized }: { onUnauthorized: () =>
                         disabled={toggling}
                         onCheckedChange={(v) => void toggleAvailable(item, v === true)}
                         aria-label={`فعال در منو: ${item.name}`}
+                        className="h-6 w-11 sm:h-[1.15rem] sm:w-8"
                       />
                     </div>
-                    <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-accent/40 bg-accent/5 px-3">
+                    <div className="flex min-h-12 items-center justify-between gap-2 rounded-xl border border-accent/40 bg-accent/5 px-3 sm:min-h-11">
                       <Label
                         htmlFor={`feat-${item.id}`}
-                        className="cursor-pointer text-xs text-muted-foreground"
+                        className="cursor-pointer text-sm text-muted-foreground sm:text-xs"
                       >
                         پیشنهاد شف
                         {toggling ? (
@@ -344,6 +345,7 @@ export default function ItemsManager({ onUnauthorized }: { onUnauthorized: () =>
                         disabled={toggling}
                         onCheckedChange={(v) => void toggleFeatured(item, v === true)}
                         aria-label={`پیشنهاد شف: ${item.name}`}
+                        className="h-6 w-11 sm:h-[1.15rem] sm:w-8"
                       />
                     </div>
                   </div>

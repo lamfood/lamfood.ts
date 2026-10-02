@@ -259,17 +259,17 @@ export default function ItemForm({
                 <button
                   type="button"
                   onClick={() => setShowUrlInput(true)}
-                  className="flex h-8 w-fit items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  className="flex h-10 w-fit items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline sm:h-8 sm:text-xs"
                 >
-                  <Link2 className="size-3.5" aria-hidden />
+                  <Link2 className="size-4 sm:size-3.5" aria-hidden />
                   یا وارد کردن آدرس تصویر
                 </button>
                 <button
                   type="button"
                   onClick={() => setMediaLibOpen(true)}
-                  className="flex h-8 w-fit items-center gap-1 text-xs text-primary underline-offset-4 hover:underline"
+                  className="flex h-10 w-fit items-center gap-1 text-sm text-primary underline-offset-4 hover:underline sm:h-8 sm:text-xs"
                 >
-                  <ImagePlus className="size-3.5" aria-hidden />
+                  <ImagePlus className="size-4 sm:size-3.5" aria-hidden />
                   انتخاب از کتابخانه تصاویر
                 </button>
               </div>
@@ -355,7 +355,7 @@ export default function ItemForm({
 
           {/* Availability + Featured toggles */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl border px-3">
+            <div className="flex min-h-12 items-center justify-between gap-2 rounded-xl border px-3 sm:min-h-11">
               <Label htmlFor="item-available" className="cursor-pointer text-sm">
                 نمایش در منو
               </Label>
@@ -363,9 +363,10 @@ export default function ItemForm({
                 id="item-available"
                 checked={available}
                 onCheckedChange={(v) => setAvailable(v === true)}
+                className="h-6 w-11 sm:h-[1.15rem] sm:w-8"
               />
             </div>
-            <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-accent/40 bg-accent/5 px-3">
+            <div className="flex min-h-12 items-center justify-between gap-2 rounded-xl border border-accent/40 bg-accent/5 px-3 sm:min-h-11">
               <Label htmlFor="item-featured" className="cursor-pointer text-sm">
                 پیشنهاد شف
               </Label>
@@ -373,6 +374,7 @@ export default function ItemForm({
                 id="item-featured"
                 checked={featured}
                 onCheckedChange={(v) => setFeatured(v === true)}
+                className="h-6 w-11 sm:h-[1.15rem] sm:w-8"
               />
             </div>
           </div>
@@ -421,7 +423,7 @@ export default function ItemForm({
             ) : null}
           </div>
 
-          <Button type="submit" disabled={saving || uploading} className="h-12 w-full font-bold">
+          <Button type="submit" disabled={saving || uploading} className="h-14 w-full text-base font-bold sm:h-12">
             {saving ? (
               <>
                 <Loader2 className="size-5 animate-spin" aria-hidden />
@@ -590,9 +592,9 @@ function OptionsEditor({
           variant="outline"
           size="sm"
           onClick={addGroup}
-          className="h-8 gap-1.5 px-2.5 text-xs"
+          className="h-10 gap-1.5 px-3 text-sm sm:h-8 sm:px-2.5 sm:text-xs"
         >
-          <Plus className="size-3.5" aria-hidden />
+          <Plus className="size-4 sm:size-3.5" aria-hidden />
           گروه جدید
         </Button>
       </div>
@@ -610,25 +612,25 @@ function OptionsEditor({
         <div className="grid gap-3">
           {optionGroups.map((group, gi) => (
             <div key={group.id} className="grid gap-2 rounded-lg border bg-background p-3">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
                 <Input
                   value={group.label}
                   onChange={(e) => updateGroupLabel(gi, e.target.value)}
                   placeholder="عنوان گروه (مثل: اندازه)"
-                  className="h-9 min-w-[8rem] flex-1 text-sm font-medium"
+                  className="h-11 min-w-0 flex-1 text-sm font-medium sm:h-9 sm:min-w-[8rem]"
                   aria-label={`عنوان گروه ${gi + 1}`}
                   maxLength={60}
                 />
                 {/* Multi-select toggle */}
                 <label
-                  className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border bg-muted/40 px-2.5 text-xs"
+                  className="flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border bg-muted/40 px-2.5 text-xs sm:h-9"
                   title={group.multiSelect ? "حالت چندانتخابی (چند گزینه قابل انتخاب)" : "حالت تک‌انتخابی (فقط یک گزینه)"}
                 >
                   <Switch
                     checked={!!group.multiSelect}
                     onCheckedChange={(v) => toggleMultiSelect(gi, v === true)}
                     aria-label="چندانتخابی"
-                    className="scale-75"
+                    className="h-6 w-11 sm:h-[1.15rem] sm:w-8"
                   />
                   <span className="text-muted-foreground">چندانتخابی</span>
                 </label>
@@ -636,7 +638,7 @@ function OptionsEditor({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="size-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  className="h-11 w-11 shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:size-9"
                   onClick={() => removeGroup(gi)}
                   aria-label="حذف این گروه"
                 >
@@ -646,7 +648,7 @@ function OptionsEditor({
 
               <div className="grid gap-2">
                 {group.options.map((opt, oi) => (
-                  <div key={opt.id} className="flex flex-wrap items-center gap-2">
+                  <div key={opt.id} className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
                     {/* Default indicator: checkbox for multiSelect, radio for single-select */}
                     <input
                       type={group.multiSelect ? "checkbox" : "radio"}
@@ -654,13 +656,13 @@ function OptionsEditor({
                       checked={opt.isDefault}
                       onChange={() => toggleDefault(gi, oi)}
                       aria-label={group.multiSelect ? "پیش‌فرض (پیش‌انتخاب شده)" : "پیش‌فرض این گروه"}
-                      className="size-4 shrink-0 cursor-pointer accent-primary"
+                      className="size-5 shrink-0 cursor-pointer accent-primary sm:size-4"
                     />
                     <Input
                       value={opt.name}
                       onChange={(e) => updateOption(gi, oi, { name: e.target.value })}
                       placeholder="نام گزینه (مثل: بزرگ)"
-                      className="h-9 min-w-[8rem] flex-1 text-sm"
+                      className="h-11 min-w-0 flex-1 text-sm sm:h-9 sm:min-w-[8rem]"
                       aria-label={`نام گزینه ${oi + 1}`}
                       maxLength={60}
                     />
@@ -673,7 +675,7 @@ function OptionsEditor({
                         onChange={(e) => updateOption(gi, oi, { priceText: e.target.value })}
                         placeholder="۰"
                         dir="ltr"
-                        className="h-9 w-20 text-left text-sm"
+                        className="h-11 w-24 text-left text-sm sm:h-9 sm:w-20"
                         aria-label={`قیمت اضافه گزینه ${oi + 1} (هزار تومان)`}
                       />
                       <span className="shrink-0 text-xs text-muted-foreground">ه.ت</span>
@@ -682,7 +684,7 @@ function OptionsEditor({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="size-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      className="h-11 w-11 shrink-0 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:size-9"
                       onClick={() => removeOption(gi, oi)}
                       aria-label="حذف این گزینه"
                       disabled={group.options.length <= 1}
@@ -698,9 +700,9 @@ function OptionsEditor({
                 variant="ghost"
                 size="sm"
                 onClick={() => addOption(gi)}
-                className="h-8 w-fit gap-1.5 text-xs text-primary hover:bg-primary/10"
+                className="h-10 w-fit gap-1.5 text-sm text-primary hover:bg-primary/10 sm:h-8 sm:text-xs"
               >
-                <Plus className="size-3.5" aria-hidden />
+                <Plus className="size-4 sm:size-3.5" aria-hidden />
                 افزودن گزینه
               </Button>
             </div>
