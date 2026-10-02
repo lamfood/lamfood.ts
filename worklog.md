@@ -1265,3 +1265,105 @@ details and add more features/functionality.
 Recommended priority for the next 15-min round: pick #1 (popularity sort —
 medium, improves discovery) or #5 (bulk admin operations — medium, improves
 admin efficiency). #4 is a content fix the admin can do themselves.
+
+---
+Task ID: 11
+Agent: main (webDevReview — cron-triggered round 10)
+Task: QA the current state via agent-browser, fix any bugs found, then add
+new features and styling polish. Mandatory: improve styling with more
+details and add more features/functionality.
+
+## Current project status (assessment at start of round)
+- All previous work pushed (commits `77fe475` → `00e581f`): 12 categories,
+  theme bug fix, CategoryGrid, featured items, item details dialog,
+  back-to-top, admin featured toggle, dark mode (public + admin),
+  search filters (category + 5 sort options), search-by-category,
+  image MIME fix, hero polish, order persistence, admin Orders tab +
+  notifications + dashboard with 7-day chart + top items, public tracking
+  page with auto-refresh + recent orders, item options/addons (single +
+  multi-select), customer order history, time-based item availability,
+  media library browser, featured section availability badges.
+- Dev server running on port 3000; 24 items; breakfast has 07:00-11:00
+  time window; 2 items with options; 5+ orders in DB.
+- /admin login works (admin/admin123); 4 admin tabs (dashboard, items,
+  orders, settings).
+- Round-10 handover recommended: #1 popularity sort, #5 bulk admin ops.
+
+## QA findings (via agent-browser)
+- ✅ All previous features working: 24/24 images load, dark mode, search
+  filters, featured section with availability badges, item details dialog,
+  order submission, admin dashboard with stats, tracking page, media
+  library, time-based availability.
+- ⚠️ Gap: no popularity tracking — search results couldn't be sorted by
+  popularity, and there was no visual indicator for popular items.
+
+## Goals / completed modifications / verification
+
+### New feature: item popularity tracking + sort (#1)
+- **Schema**: `prisma/schema.prisma` — added `viewCount Int @default(0)` to
+  MenuItem. Incremented each time a customer opens the ItemDetailsDialog.
+- **Types**: `src/lib/types.ts` — added `viewCount: number` to MenuItemDTO.
+- **API**: `src/app/api/menu/view/route.ts` (new) — public POST endpoint
+  that increments an item's `viewCount` atomically via
+  `db.menuItem.updateMany({ data: { viewCount: { increment: 1 } } })`.
+  CSRF-guarded + per-IP rate-limited (20 views / 5 min). Fire-and-forget
+  from the client's perspective — errors are swallowed so a failed
+  view-tracking call never blocks the dialog UX.
+- **UI — view tracking**: `src/components/menu/ItemDetailsDialog.tsx` —
+  fires the view increment on mount via a ref-guarded `useEffect` (fires
+  once per item dialog open, since `key={item.id}` remounts the component).
+  Fire-and-forget with `.catch(() => {})`.
+- **UI — popular sort**: `src/components/menu/SearchFilters.tsx` — added
+  "محبوب‌ترین" (most popular) sort option. Now 6 sort options total:
+  default, **popular**, cheapest, most expensive, name A-Z, name Z-A.
+- **UI — sort handling**: `src/app/page.tsx` — handles the "popular" sort
+  key with `b.viewCount - a.viewCount` (descending by views).
+- **UI — flame badge**: `src/components/menu/MenuSection.tsx` — added a
+  flame badge ("محبوب", orange, with `Flame` icon) on item cards with
+  `viewCount ≥ 5` — but only on non-featured items (to avoid badge
+  collision with the "پیشنهاد شف" ribbon) and non-time-windowed items
+  (to avoid collision with the availability badge). Shown bottom-left of
+  the image so it doesn't collide with anything else.
+
+### Verification
+- Lint: `bun run lint` → 0 errors.
+- Endpoints: `GET /api/menu` 200 (returns `viewCount` on all items),
+  `POST /api/menu/view` 200 (with valid itemId).
+- agent-browser:
+  * **View increment**: opened the pizza dialog 6 times → API returns
+    `viewCount=6`. Chicken burger opened 6 times → `viewCount=6`.
+  * **Flame badge**: chicken burger (viewCount=6, not featured, no time
+    window) shows the "محبوب" flame badge after reload (the page needed
+    a reload to re-fetch the updated `viewCount` from the API).
+  * **Popular sort**: searching "پ" + clicking "محبوب‌ترین" → pizza
+    (viewCount=6) appears first, followed by other items with
+    viewCount=0 in their original order. Correct behavior.
+  * No console errors, no page errors.
+
+## Commit & push
+- Commit `6caa002 feat: popularity sort + view tracking + flame badges`
+  (7 files, +110 / -4).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+## Unresolved issues / risks & next-phase recommendations
+1. **No bulk admin operations** — can't bulk-toggle availability, bulk-
+   delete, or drag-to-reorder items. Would need a multi-select + drag
+   interface. (Carried over from round 8.)
+2. **Order notifications are poll-based** (30s). For true real-time push,
+   could add a WebSocket mini-service. (Carried over from round 5.)
+3. **No order editing** — once submitted, the customer can't modify the
+   order. (Carried over from round 7.)
+4. **Content mismatch** (VLM-flagged, pre-existing): hero text is Persian
+   cuisine but hero image shows pizza/pasta/burgers. Admin can fix via
+   `heroImage` in Settings. (Carried over.)
+5. **Flame badge threshold is hardcoded** — currently `viewCount >= 5`.
+   Could make it configurable in admin Settings, or compute it dynamically
+   (top 20% of items by viewCount). Minor refinement.
+6. **Dashboard chart is CSS-only** — works for 7 bars but could use
+   recharts (already installed) for more complex visualizations.
+   (Carried over from round 10.)
+
+Recommended priority for the next 15-min round: pick #1 (bulk admin
+operations — medium, improves admin efficiency) or #3 (order editing —
+medium, improves customer UX). #4 is a content fix the admin can do
+themselves.
