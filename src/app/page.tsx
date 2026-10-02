@@ -4,11 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { RefreshCw, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import BackToTop from "@/components/menu/BackToTop"
 import BasketSheet from "@/components/menu/BasketSheet"
 import CategoryGrid from "@/components/menu/CategoryGrid"
+import FeaturedSection from "@/components/menu/FeaturedSection"
 import FloatingBasket from "@/components/menu/FloatingBasket"
 import Hero from "@/components/menu/Hero"
 import InfoCards from "@/components/menu/InfoCards"
+import ItemDetailsDialog from "@/components/menu/ItemDetailsDialog"
 import LocationSheet from "@/components/menu/LocationSheet"
 import MenuFooter from "@/components/menu/MenuFooter"
 import MenuSection from "@/components/menu/MenuSection"
@@ -99,6 +102,7 @@ export default function Home() {
   const [basketOpen, setBasketOpen] = useState(false)
   const [locationOpen, setLocationOpen] = useState(false)
   const [isOpenNow, setIsOpenNow] = useState<boolean | null>(null)
+  const [detailsItemId, setDetailsItemId] = useState<string | null>(null)
 
   // Rehydrate the persisted basket after mount (skipHydration: true).
   useEffect(() => {
@@ -170,6 +174,29 @@ export default function Home() {
     document.getElementById(`cat-${key}`)?.scrollIntoView({ behavior: "smooth" })
   }, [])
 
+  /** Featured items (admin-curated) — shown above the categories grid as a
+    * horizontally-scrolling rail. Hidden while searching. */
+  const featuredItems = useMemo(
+    () => (items ?? []).filter((item) => item.featured),
+    [items]
+  )
+
+  /** The MenuItemDTO currently shown in the details dialog (or null). */
+  const detailsItem = useMemo(
+    () => (detailsItemId ? (items ?? []).find((i) => i.id === detailsItemId) ?? null : null),
+    [items, detailsItemId]
+  )
+
+  /** Open the details dialog for a given item id. */
+  const openItemDetails = useCallback((id: string) => {
+    setDetailsItemId(id)
+  }, [])
+
+  /** Close the details dialog. */
+  const closeItemDetails = useCallback(() => {
+    setDetailsItemId(null)
+  }, [])
+
   if (status === "loading") {
     return <LoadingView />
   }
@@ -208,6 +235,14 @@ export default function Home() {
         onOpenBasket={() => setBasketOpen(true)}
       />
 
+      {/* "پیشنهاد شف" — curated featured items rail (admin-controlled via the
+          `featured` flag). Hidden while searching. */}
+      <FeaturedSection
+        items={featuredItems}
+        hidden={searchActive}
+        onOpenItem={openItemDetails}
+      />
+
       {/* "View all categories at once" — a grid overview that complements the
           horizontal chip rail in the sticky nav. Hidden while searching. */}
       <CategoryGrid
@@ -222,12 +257,21 @@ export default function Home() {
           results={searchResults}
           query={query}
           onClearSearch={() => setQuery("")}
+          onOpenItem={openItemDetails}
         />
       </main>
 
       <MenuFooter config={config} className="mt-auto" />
 
+      <BackToTop />
       <FloatingBasket onOpen={() => setBasketOpen(true)} />
+      <ItemDetailsDialog
+        item={detailsItem}
+        open={detailsItem !== null}
+        onOpenChange={(open) => {
+          if (!open) closeItemDetails()
+        }}
+      />
       <BasketSheet open={basketOpen} onOpenChange={setBasketOpen} config={config} />
       <LocationSheet open={locationOpen} onOpenChange={setLocationOpen} config={config} />
     </div>

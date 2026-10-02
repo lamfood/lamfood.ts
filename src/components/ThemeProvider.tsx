@@ -70,11 +70,14 @@ export function applyTheme(theme: ThemeColors) {
   //    the background at small alpha values so muted/secondary/border track the
   //    chosen palette instead of staying frozen at the default teal.
   root.style.setProperty("--secondary", colorMix(theme.primary, theme.background, 0.08))
-  root.style.setProperty("--secondary-foreground", mixToHex(theme.primary, theme.foreground, 0.55))
+  root.style.setProperty("--secondary-foreground", mixToHex(theme.primary, theme.foreground, 0.7))
   root.style.setProperty("--muted", colorMix(theme.primary, theme.background, 0.05))
+  // muted-foreground weight bumped 0.55 → 0.72 to clear WCAG AA contrast
+  // (≥4.5:1) against the background, so item descriptions stay readable
+  // even on light pastel palettes.
   root.style.setProperty(
     "--muted-foreground",
-    mixToHex(theme.foreground, theme.background, 0.55),
+    mixToHex(theme.foreground, theme.background, 0.72),
   )
   root.style.setProperty("--border", colorMix(theme.primary, theme.background, 0.18))
   root.style.setProperty("--input", colorMix(theme.primary, theme.background, 0.25))

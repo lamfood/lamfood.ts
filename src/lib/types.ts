@@ -40,6 +40,7 @@ export interface MenuItemDTO {
   category: string
   image: string | null
   available: boolean
+  featured: boolean
   sortOrder: number
 }
 

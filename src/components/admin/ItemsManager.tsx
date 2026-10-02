@@ -9,6 +9,7 @@ import {
   Pencil,
   Plus,
   Search,
+  Sparkles,
   Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -104,12 +105,47 @@ export default function ItemsManager({ onUnauthorized }: { onUnauthorized: () =>
           category: item.category,
           image: item.image,
           available,
+          featured: item.featured,
           sortOrder: item.sortOrder,
         }),
       })
       setItems((prev) =>
         prev ? prev.map((i) => (i.id === item.id ? { ...i, available } : i)) : prev,
       )
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onUnauthorized()
+        return
+      }
+      toast.error(err instanceof Error ? err.message : "تغییر وضعیت ناموفق بود")
+    } finally {
+      setTogglingId(null)
+    }
+  }
+
+  /** Toggle the "featured" flag for an item (curates the "پیشنهاد شف" rail on
+      the public menu). Preserves every other field. */
+  async function toggleFeatured(item: MenuItemDTO, featured: boolean) {
+    if (togglingId) return
+    setTogglingId(item.id)
+    try {
+      await apiFetch<{ item: MenuItemDTO }>(`/api/admin/items/${item.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: item.name,
+          description: item.description,
+          price: item.price,
+          category: item.category,
+          image: item.image,
+          available: item.available,
+          featured,
+          sortOrder: item.sortOrder,
+        }),
+      })
+      setItems((prev) =>
+        prev ? prev.map((i) => (i.id === item.id ? { ...i, featured } : i)) : prev,
+      )
+      toast.success(featured ? "به پیشنهاد شف اضافه شد" : "از پیشنهاد شف حذف شد")
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         onUnauthorized()
@@ -228,14 +264,28 @@ export default function ItemsManager({ onUnauthorized }: { onUnauthorized: () =>
               <Card key={item.id} className="gap-3 rounded-2xl py-4">
                 <CardContent className="grid gap-3 px-4">
                   {item.image ? (
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className={`h-32 w-full rounded-xl object-cover ${item.available ? "" : "opacity-60"}`}
-                    />
+                    <div className="relative">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className={`h-32 w-full rounded-xl object-cover ${item.available ? "" : "opacity-60"}`}
+                      />
+                      {item.featured ? (
+                        <Badge className="absolute left-2 top-2 gap-1 bg-accent text-[10px] text-accent-foreground">
+                          <Sparkles className="size-3" aria-hidden />
+                          پیشنهاد شف
+                        </Badge>
+                      ) : null}
+                    </div>
                   ) : (
-                    <div className="flex h-32 w-full items-center justify-center rounded-xl bg-muted">
+                    <div className="relative flex h-32 w-full items-center justify-center rounded-xl bg-muted">
                       <ImagePlus className="size-8 text-muted-foreground/50" aria-hidden />
+                      {item.featured ? (
+                        <Badge className="absolute left-2 top-2 gap-1 bg-accent text-[10px] text-accent-foreground">
+                          <Sparkles className="size-3" aria-hidden />
+                          پیشنهاد شف
+                        </Badge>
+                      ) : null}
                     </div>
                   )}
 
@@ -257,23 +307,43 @@ export default function ItemsManager({ onUnauthorized }: { onUnauthorized: () =>
                     ) : null}
                   </div>
 
-                  <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl bg-muted/50 px-3">
-                    <Label
-                      htmlFor={`avail-${item.id}`}
-                      className="cursor-pointer text-xs text-muted-foreground"
-                    >
-                      فعال در منو
-                      {toggling ? (
-                        <Loader2 className="mr-1 inline size-3.5 animate-spin align-middle" aria-hidden />
-                      ) : null}
-                    </Label>
-                    <Switch
-                      id={`avail-${item.id}`}
-                      checked={item.available}
-                      disabled={toggling}
-                      onCheckedChange={(v) => void toggleAvailable(item, v === true)}
-                      aria-label={`فعال در منو: ${item.name}`}
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl bg-muted/50 px-3">
+                      <Label
+                        htmlFor={`avail-${item.id}`}
+                        className="cursor-pointer text-xs text-muted-foreground"
+                      >
+                        فعال در منو
+                        {toggling ? (
+                          <Loader2 className="mr-1 inline size-3.5 animate-spin align-middle" aria-hidden />
+                        ) : null}
+                      </Label>
+                      <Switch
+                        id={`avail-${item.id}`}
+                        checked={item.available}
+                        disabled={toggling}
+                        onCheckedChange={(v) => void toggleAvailable(item, v === true)}
+                        aria-label={`فعال در منو: ${item.name}`}
+                      />
+                    </div>
+                    <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-accent/40 bg-accent/5 px-3">
+                      <Label
+                        htmlFor={`feat-${item.id}`}
+                        className="cursor-pointer text-xs text-muted-foreground"
+                      >
+                        پیشنهاد شف
+                        {toggling ? (
+                          <Loader2 className="mr-1 inline size-3.5 animate-spin align-middle" aria-hidden />
+                        ) : null}
+                      </Label>
+                      <Switch
+                        id={`feat-${item.id}`}
+                        checked={item.featured}
+                        disabled={toggling}
+                        onCheckedChange={(v) => void toggleFeatured(item, v === true)}
+                        aria-label={`پیشنهاد شف: ${item.name}`}
+                      />
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-end gap-1 border-t pt-2">

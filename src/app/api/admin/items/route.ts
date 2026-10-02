@@ -34,6 +34,7 @@ export const itemCreateSchema = z.object({
     .nullable()
     .transform((v) => (v ? v : null)),
   available: z.boolean().default(true),
+  featured: z.boolean().default(false),
   sortOrder: z.number().int().min(0).max(10_000).default(0),
 })
 

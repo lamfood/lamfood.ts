@@ -57,6 +57,7 @@ export default function ItemForm({
   const [description, setDescription] = useState<string>("")
   const [image, setImage] = useState<string | null>(null)
   const [available, setAvailable] = useState<boolean>(true)
+  const [featured, setFeatured] = useState<boolean>(false)
 
   const [uploading, setUploading] = useState<boolean>(false)
   const [saving, setSaving] = useState<boolean>(false)
@@ -73,6 +74,7 @@ export default function ItemForm({
     setDescription(initial?.description ?? "")
     setImage(initial?.image ?? null)
     setAvailable(initial?.available ?? true)
+    setFeatured(initial?.featured ?? false)
     setShowUrlInput(false)
     setUploading(false)
     setSaving(false)
@@ -133,6 +135,7 @@ export default function ItemForm({
         category,
         image: trimmedImage ? trimmedImage : null,
         available,
+        featured,
         sortOrder: initial?.sortOrder ?? 0,
       }
 
@@ -327,16 +330,28 @@ export default function ItemForm({
             />
           </div>
 
-          {/* Availability */}
-          <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl border px-3">
-            <Label htmlFor="item-available" className="cursor-pointer text-sm">
-              نمایش در منو
-            </Label>
-            <Switch
-              id="item-available"
-              checked={available}
-              onCheckedChange={(v) => setAvailable(v === true)}
-            />
+          {/* Availability + Featured toggles */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl border px-3">
+              <Label htmlFor="item-available" className="cursor-pointer text-sm">
+                نمایش در منو
+              </Label>
+              <Switch
+                id="item-available"
+                checked={available}
+                onCheckedChange={(v) => setAvailable(v === true)}
+              />
+            </div>
+            <div className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-accent/40 bg-accent/5 px-3">
+              <Label htmlFor="item-featured" className="cursor-pointer text-sm">
+                پیشنهاد شف
+              </Label>
+              <Switch
+                id="item-featured"
+                checked={featured}
+                onCheckedChange={(v) => setFeatured(v === true)}
+              />
+            </div>
           </div>
 
           <Button type="submit" disabled={saving || uploading} className="h-12 w-full font-bold">

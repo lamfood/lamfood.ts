@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import { motion } from "framer-motion"
-import { Minus, Plus, SearchX, UtensilsCrossed } from "lucide-react"
+import { Info, Minus, Plus, SearchX, Sparkles, UtensilsCrossed } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -17,9 +17,19 @@ interface MenuSectionProps {
   results: MenuItemDTO[]
   query: string
   onClearSearch: () => void
+  /** Open the item details dialog for a given item id (optional). */
+  onOpenItem?: (id: string) => void
 }
 
-function ItemCard({ item, index }: { item: MenuItemDTO; index: number }) {
+function ItemCard({
+  item,
+  index,
+  onOpenItem,
+}: {
+  item: MenuItemDTO
+  index: number
+  onOpenItem?: (id: string) => void
+}) {
   const qty = useBasketStore((state) => state.lines[item.id]?.qty ?? 0)
   const add = useBasketStore((state) => state.add)
   const setQty = useBasketStore((state) => state.setQty)
@@ -27,30 +37,83 @@ function ItemCard({ item, index }: { item: MenuItemDTO; index: number }) {
   const category = CATEGORIES.find((c) => c.key === item.category)
   const CategoryIcon = category?.icon ?? UtensilsCrossed
 
+  const openDetails = () => onOpenItem?.(item.id)
+  const clickable = !!onOpenItem
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index, 8) * 0.04, ease: "easeOut" }}
     >
-      <Card className="group gap-0 overflow-hidden rounded-2xl py-0 transition-shadow hover:shadow-lg">
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
-          {item.image ? (
-            <img
-              src={item.image}
-              alt={item.name}
-              loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <CategoryIcon className="h-14 w-14 text-muted-foreground/40" aria-hidden />
-            </div>
-          )}
-        </div>
+      <Card className="group relative gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+        {/* Featured ribbon — top-right of the image */}
+        {item.featured ? (
+          <span className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-accent/90 px-2.5 py-1 text-[11px] font-bold text-accent-foreground shadow-md backdrop-blur">
+            <Sparkles className="size-3" aria-hidden />
+            پیشنهاد شف
+          </span>
+        ) : null}
+
+        {/* Image — clickable to open the details dialog */}
+        {clickable ? (
+          <button
+            type="button"
+            onClick={openDetails}
+            aria-label={`مشاهدهٔ جزئیات ${item.name}`}
+            className="relative block aspect-[4/3] w-full overflow-hidden bg-muted text-right"
+          >
+            {item.image ? (
+              <img
+                src={item.image}
+                alt={item.name}
+                loading="lazy"
+                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <CategoryIcon className="h-14 w-14 text-muted-foreground/40" aria-hidden />
+              </div>
+            )}
+            {/* Hover "details" hint */}
+            <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-gradient-to-t from-black/65 to-transparent py-3 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+              <Info className="size-3.5" aria-hidden />
+              مشاهدهٔ جزئیات
+            </span>
+          </button>
+        ) : (
+          <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+            {item.image ? (
+              <img
+                src={item.image}
+                alt={item.name}
+                loading="lazy"
+                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <CategoryIcon className="h-14 w-14 text-muted-foreground/40" aria-hidden />
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-1 flex-col gap-2 p-4">
-          <h3 className="text-base font-bold">{item.name}</h3>
+          {/* Title — clickable to open the details dialog */}
+          {clickable ? (
+            <button
+              type="button"
+              onClick={openDetails}
+              aria-label={`مشاهدهٔ جزئیات ${item.name}`}
+              className="min-w-0 flex-1 text-right"
+            >
+              <h3 className="line-clamp-1 text-base font-bold leading-6 transition-colors hover:text-primary">
+                {item.name}
+              </h3>
+            </button>
+          ) : (
+            <h3 className="line-clamp-1 text-base font-bold leading-6">{item.name}</h3>
+          )}
           <p className="min-h-[2.5rem] text-sm leading-5 text-muted-foreground line-clamp-2">
             {item.description ?? ""}
           </p>
@@ -108,7 +171,13 @@ function ItemCard({ item, index }: { item: MenuItemDTO; index: number }) {
   )
 }
 
-export default function MenuSection({ items, results, query, onClearSearch }: MenuSectionProps) {
+export default function MenuSection({
+  items,
+  results,
+  query,
+  onClearSearch,
+  onOpenItem,
+}: MenuSectionProps) {
   const groups = useMemo(
     () =>
       CATEGORIES.map((category) => ({
@@ -149,7 +218,12 @@ export default function MenuSection({ items, results, query, onClearSearch }: Me
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {results.map((item, index) => (
-              <ItemCard key={item.id} item={item} index={index} />
+              <ItemCard
+                key={item.id}
+                item={item}
+                index={index}
+                onOpenItem={onOpenItem}
+              />
             ))}
           </div>
         )}
@@ -180,7 +254,7 @@ export default function MenuSection({ items, results, query, onClearSearch }: Me
           key={group.key}
           id={`cat-${group.key}`}
           aria-labelledby={`cat-heading-${group.key}`}
-          className="mx-auto w-full max-w-6xl px-4 py-8"
+          className="mx-auto w-full max-w-6xl scroll-mt-24 px-4 py-8"
         >
           <header className="mb-4 flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent-foreground">
@@ -196,7 +270,12 @@ export default function MenuSection({ items, results, query, onClearSearch }: Me
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {group.items.map((item, index) => (
-              <ItemCard key={item.id} item={item} index={index} />
+              <ItemCard
+                key={item.id}
+                item={item}
+                index={index}
+                onOpenItem={onOpenItem}
+              />
             ))}
           </div>
         </section>

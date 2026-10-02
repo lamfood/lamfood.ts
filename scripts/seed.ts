@@ -14,6 +14,7 @@ const ITEMS: {
   price: number;
   category: string;
   image: string;
+  featured?: boolean;
 }[] = [
   // Breakfast
   {
@@ -22,6 +23,7 @@ const ITEMS: {
     price: 120,
     category: "breakfast",
     image: "/uploads/food-breakfast-1.png",
+    featured: true,
   },
   {
     name: "پنکیک عسل و موز",
@@ -37,6 +39,7 @@ const ITEMS: {
     price: 200,
     category: "burgers",
     image: "/uploads/food-burgers-1.png",
+    featured: true,
   },
   {
     name: "برگر مرغ تند",
@@ -52,6 +55,7 @@ const ITEMS: {
     price: 250,
     category: "pizza",
     image: "/uploads/food-pizza-1.png",
+    featured: true,
   },
   {
     name: "پیتزا باربیکیو مرغ",
@@ -98,6 +102,7 @@ const ITEMS: {
     price: 120,
     category: "dessert",
     image: "/uploads/food-dessert-1.png",
+    featured: true,
   },
   {
     name: "چیزکیک نیویورکی",
@@ -113,6 +118,7 @@ const ITEMS: {
     price: 85,
     category: "coffee",
     image: "/uploads/food-coffee-1.png",
+    featured: true,
   },
   {
     name: "آیس لاته",
@@ -173,6 +179,7 @@ const ITEMS: {
     price: 110,
     category: "shake",
     image: "/uploads/food-shake-1.png",
+    featured: true,
   },
   {
     name: "شیک توت‌فرنگی",

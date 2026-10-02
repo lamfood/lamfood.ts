@@ -91,7 +91,7 @@ export default function StickyCategoryNav({
             <Search className="h-5 w-5" aria-hidden />
           </Button>
 
-          <div className="no-scrollbar flex flex-1 items-center gap-2 overflow-x-auto py-2">
+          <div className="no-scrollbar relative flex flex-1 items-center gap-2 overflow-x-auto py-2">
             {groups.map((group) => {
               const isActive = !searchActive && active === group.key
               return (
@@ -100,14 +100,20 @@ export default function StickyCategoryNav({
                   type="button"
                   onClick={() => scrollToCategory(group.key)}
                   aria-current={isActive ? "true" : undefined}
-                  className={`flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium transition ${
+                  className={`flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-medium transition-all ${
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted text-foreground hover:bg-secondary"
+                      ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/30"
+                      : "bg-muted text-foreground ring-1 ring-transparent hover:bg-secondary hover:ring-border"
                   }`}
                 >
                   <group.icon className="h-4 w-4" aria-hidden />
                   {group.label}
+                  {isActive ? (
+                    <span
+                      aria-hidden
+                      className="me-[-2px] h-1.5 w-1.5 rounded-full bg-accent"
+                    />
+                  ) : null}
                 </button>
               )
             })}
