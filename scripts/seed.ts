@@ -121,6 +121,66 @@ const ITEMS: {
     category: "coffee",
     image: "/uploads/food-coffee-2.png",
   },
+  // Hot drinks (نوشیدنی گرم)
+  {
+    name: "هات چاکلت",
+    description: "شکلات غنی و خامه‌ای با شیر گرم و خامهٔ تازه",
+    price: 80,
+    category: "hotDrinks",
+    image: "/uploads/food-hotdrinks-1.png",
+  },
+  {
+    name: "چای ماسالا",
+    description: "چای سیاه با ادویهٔ هندی، شیر و عسل",
+    price: 65,
+    category: "hotDrinks",
+    image: "/uploads/food-hotdrinks-2.png",
+  },
+  // Cold drinks (نوشیدنی سرد)
+  {
+    name: "آیس ته‌چینه",
+    description: "ته‌چینه سرد با لیمو و یخ، طراوت‌بخش و سبک",
+    price: 55,
+    category: "coldDrinks",
+    image: "/uploads/food-colddrinks-1.png",
+  },
+  {
+    name: "لیموناد بلوبری",
+    description: "لیموناد تازه با بلوبری و نعنا، خنک و خوش‌رنگ",
+    price: 70,
+    category: "coldDrinks",
+    image: "/uploads/food-colddrinks-2.png",
+  },
+  // Herbal tea (دمنوش)
+  {
+    name: "دمنوش بهارنارنج",
+    description: "عصارهٔ بهارنارنج با چای سبز، آرام‌بخش و خوش‌بو",
+    price: 60,
+    category: "herbalTea",
+    image: "/uploads/food-herbaltea-1.png",
+  },
+  {
+    name: "دمنوش بابونه و چوب‌چین",
+    description: "ترکیب آرام‌بخش بابونه و چوب‌چین با عسل طبیعی",
+    price: 65,
+    category: "herbalTea",
+    image: "/uploads/food-herbaltea-2.png",
+  },
+  // Shake (شیک)
+  {
+    name: "میلک‌شیک شکلاتی",
+    description: "بستنی وانیلی و شکلات تلخ با شیر و خامه",
+    price: 110,
+    category: "shake",
+    image: "/uploads/food-shake-1.png",
+  },
+  {
+    name: "شیک توت‌فرنگی",
+    description: "توت‌فرنگی تازه با بستنی و شیر، خامه‌ای و خنک",
+    price: 115,
+    category: "shake",
+    image: "/uploads/food-shake-2.png",
+  },
   // Drinks
   {
     name: "موهیتو",

@@ -282,7 +282,7 @@ export default function ItemForm({
               <div>
                 <Badge
                   variant="outline"
-                  className="border-[#faa916]/50 bg-accent/15 font-bold text-[#8a5b00]"
+                  className="border-accent/50 bg-accent/15 font-bold text-accent-foreground"
                 >
                   نمایش در منو: {formatPrice(priceValue)}
                 </Badge>

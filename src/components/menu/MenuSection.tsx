@@ -56,7 +56,7 @@ function ItemCard({ item, index }: { item: MenuItemDTO; index: number }) {
           </p>
 
           <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-            <span className="rounded-full bg-accent/15 px-3 py-1.5 text-sm font-extrabold text-[#8a5b00]">
+            <span className="rounded-full bg-accent/15 px-3 py-1.5 text-sm font-extrabold text-accent-foreground">
               {formatPrice(item.price)}
             </span>
 

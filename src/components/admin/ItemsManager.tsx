@@ -247,7 +247,7 @@ export default function ItemsManager({ onUnauthorized }: { onUnauthorized: () =>
                   </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-[#8a5b00]">
+                    <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent-foreground">
                       {formatPrice(item.price)}
                     </span>
                     {!item.available ? (

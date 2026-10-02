@@ -5,6 +5,7 @@ import { RefreshCw, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import BasketSheet from "@/components/menu/BasketSheet"
+import CategoryGrid from "@/components/menu/CategoryGrid"
 import FloatingBasket from "@/components/menu/FloatingBasket"
 import Hero from "@/components/menu/Hero"
 import InfoCards from "@/components/menu/InfoCards"
@@ -163,6 +164,12 @@ export default function Home() {
 
   const searchActive = searchQuery.length > 0
 
+  /** Smooth-scroll to a category section (used by both the sticky nav and the
+    * "view all categories" grid). */
+  const scrollToCategory = useCallback((key: string) => {
+    document.getElementById(`cat-${key}`)?.scrollIntoView({ behavior: "smooth" })
+  }, [])
+
   if (status === "loading") {
     return <LoadingView />
   }
@@ -199,6 +206,14 @@ export default function Home() {
         searchActive={searchActive}
         resultCount={searchResults.length}
         onOpenBasket={() => setBasketOpen(true)}
+      />
+
+      {/* "View all categories at once" — a grid overview that complements the
+          horizontal chip rail in the sticky nav. Hidden while searching. */}
+      <CategoryGrid
+        groups={groups}
+        hidden={searchActive}
+        onSelect={scrollToCategory}
       />
 
       <main id="menu" className="flex-1">

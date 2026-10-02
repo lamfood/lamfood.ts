@@ -3,10 +3,14 @@ import {
   Beef,
   Pizza,
   Sandwich,
-  CakeSlice,
   UtensilsCrossed,
-  CupSoda,
   Coffee,
+  Soup,
+  GlassWater,
+  Leaf,
+  Milk,
+  CakeSlice,
+  CupSoda,
   type LucideIcon,
 } from "lucide-react"
 
@@ -16,15 +20,25 @@ export interface CategoryDef {
   icon: LucideIcon
 }
 
-/** The 8 fixed menu categories — order defines display order. */
+/**
+ * The 12 fixed menu categories — order defines display order.
+ *
+ * Order is intentional and matches the brand's required layout:
+ *   صبحانه · برگر · پیتزا · ساندویچ · پاستا · قهوه
+ *   نوشیدنی گرم · نوشیدنی سرد · دمنوش · شیک · دسر · نوشیدنی
+ */
 export const CATEGORIES: CategoryDef[] = [
   { key: "breakfast", label: "صبحانه", icon: Croissant },
   { key: "burgers", label: "برگر", icon: Beef },
   { key: "pizza", label: "پیتزا", icon: Pizza },
   { key: "sandwich", label: "ساندویچ", icon: Sandwich },
   { key: "pasta", label: "پاستا", icon: UtensilsCrossed },
-  { key: "dessert", label: "دسر", icon: CakeSlice },
   { key: "coffee", label: "قهوه", icon: Coffee },
+  { key: "hotDrinks", label: "نوشیدنی گرم", icon: Soup },
+  { key: "coldDrinks", label: "نوشیدنی سرد", icon: GlassWater },
+  { key: "herbalTea", label: "دمنوش", icon: Leaf },
+  { key: "shake", label: "شیک", icon: Milk },
+  { key: "dessert", label: "دسر", icon: CakeSlice },
   { key: "drinks", label: "نوشیدنی", icon: CupSoda },
 ]
 

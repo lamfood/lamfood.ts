@@ -135,15 +135,15 @@ export default function LoginForm({
   const locked = lockSeconds > 0
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#0f4a50] via-primary to-[#0f4a50] p-4">
-      {/* Decorative amber blur circles */}
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-primary/90 via-primary to-primary/90 p-4">
+      {/* Decorative accent blur circles */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-16 -top-16 size-72 rounded-full bg-[#faa916]/25 blur-3xl"
+        className="pointer-events-none absolute -left-16 -top-16 size-72 rounded-full bg-accent/25 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-20 -right-10 size-80 rounded-full bg-[#faa916]/15 blur-3xl"
+        className="pointer-events-none absolute -bottom-20 -right-10 size-80 rounded-full bg-accent/15 blur-3xl"
       />
 
       <div className="relative flex w-full flex-col items-center">
@@ -236,7 +236,7 @@ export default function LoginForm({
 
               {/* Error / lockout / network alerts */}
               {error && errorKind === "network" ? (
-                <Alert className="border-[#faa916]/60 bg-[#faa916]/10 text-[#7a5200] [&>svg]:text-current">
+                <Alert className="border-accent/60 bg-accent/10 text-accent-foreground [&>svg]:text-current">
                   <TriangleAlert className="size-4" aria-hidden />
                   <AlertDescription className="text-current">{error}</AlertDescription>
                 </Alert>
