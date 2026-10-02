@@ -933,3 +933,125 @@ Recommended priority for the next 15-min round: pick #5 (item availability
 per-time-of-day — medium, useful for real restaurants) or #1 (media
 library browser — medium, improves admin UX). #4 is a content fix the
 admin can do themselves.
+
+---
+Task ID: 8
+Agent: main (webDevReview — cron-triggered round 7)
+Task: QA the current state via agent-browser, fix any bugs found, then add
+new features and styling polish. Mandatory: improve styling with more
+details and add more features/functionality.
+
+## Current project status (assessment at start of round)
+- All previous work pushed (commits `77fe475` → `8eafc08`): 12 categories,
+  theme bug fix, CategoryGrid, featured items, item details dialog,
+  back-to-top, admin featured toggle, dark mode (public + admin),
+  search filters, image MIME fix, hero polish, order persistence,
+  admin Orders tab + notifications, public tracking page with auto-refresh,
+  item options/addons (single + multi-select), customer order history.
+- Dev server running on port 3000; 24 items seeded (6 featured); 2 items
+  with options (cheeseburger single-select size, latte multi-select add-ons);
+  4+ orders in DB from previous QA.
+- /admin login works (admin/admin123).
+- Round-7 handover recommended: #5 item availability per-time-of-day,
+  #1 media library browser.
+
+## QA findings (via agent-browser + VLM)
+- ✅ All previous features working: 24/24 images load, dark mode toggle,
+  search filters, featured section, item details dialog with single +
+  multi-select options, order submission → admin Orders tab + notifications,
+  public tracking page with auto-refresh + recent orders.
+- ⚠️ Gaps (carried over from round 7):
+  * No time-based item availability — breakfast items should be hidden/
+    dimmed after 11am.
+  * No media library browser — admin had to re-upload or paste a URL;
+    couldn't pick from existing uploads.
+
+## Goals / completed modifications / verification
+
+### New feature: item availability per-time-of-day (#5)
+- **Schema**: `prisma/schema.prisma` — added `availableFrom String?` and
+  `availableTo String?` to MenuItem. Both null = always available. Supports
+  overnight windows (e.g. from=18:00, to=02:00).
+- **Types**: `src/lib/types.ts` — added `availableFrom` + `availableTo`
+  (string | null) to MenuItemDTO.
+- **Server helper**: `src/lib/menu-items.ts` — `isItemAvailableNow()`
+  parses HH:MM, gets Tehran local time via `Intl.DateTimeFormat`, compares
+  against the window. Handles overnight windows (toMin ≤ fromMin).
+- **Client helper**: `src/lib/availability.ts` (new) — client-side mirror
+  of `isItemAvailableNow()` (without the `server-only` import so it can
+  be used in client components). Also exports `formatTimeFa()` for Persian
+  time formatting (e.g. «۷:۰۰»).
+- **API**: `src/app/api/admin/items/route.ts` — zod schema accepts
+  `availableFrom`/`availableTo` (nullable, optional, validated against
+  HH:MM regex). The POST/PUT handlers pass them through to Prisma.
+- **Admin UI**: `src/components/admin/ItemForm.tsx` — new "ساعت موجود
+  بودن (اختیاری)" section with two `<Input type="time">` fields + a
+  "پاک کردن محدودیت ساعت" clear button when a window is set.
+- **Public menu**: `src/components/menu/MenuSection.tsx` — ItemCard now:
+  * Checks `isItemAvailableNow()` client-side (updates live without a
+    server round-trip).
+  * Shows a "فعلاً موجود نیست" (unavailable) badge (destructive red) when
+    outside the time window + dims the card (opacity-60).
+  * Shows a subtle "۷:۰۰—۱۱:۰۰" hours hint badge when the item HAS a
+    time window but IS currently available.
+  * Disables the "افزودن" button (changes label to "ناموجود") when
+    unavailable.
+- **Tested**: set breakfast to 07:00-11:00 → at 13:41 Tehran time, the card
+  shows "فعلاً موجود نیست" + is dimmed + add button says "ناموجود".
+
+### New feature: media library browser (#1)
+- **API**: `src/app/api/admin/uploads/route.ts` (new) — admin GET endpoint
+  that lists all image files in `public/uploads/` — returns {url, name,
+  size, mtime}, sorted newest-first. Admin-only.
+- **UI**: `src/components/admin/ItemForm.tsx` — new `MediaLibraryBrowser`
+  component — a Dialog with a responsive grid (2 cols mobile → 4 cols
+  desktop) of thumbnail cards. Shows file name + size, highlights the
+  currently selected image with a ring + checkmark. "انتخاب از کتابخانه
+  تصاویر" button in the image upload section opens the browser. Clicking
+  a thumbnail sets the image URL + closes the dialog.
+- **Tested**: 26 thumbnails appear (25 jpg + 1 png); clicking one sets the
+  item's image URL.
+
+### Verification
+- Lint: `bun run lint` → 0 errors (after fixing 1 initial
+  `set-state-in-effect` violation in MediaLibraryBrowser by deferring
+  the load to a microtask + adding missing `useCallback` import).
+- Endpoints: `GET /` 200, `GET /admin` 200, `GET /track` 200,
+  `GET /api/menu` 200 (returns availableFrom/availableTo on all items),
+  `GET /api/admin/uploads` 401 (no auth) → 200 (with auth, 26 files).
+- agent-browser:
+  * **Admin ItemForm**: time inputs render + save correctly; media library
+    button opens a dialog with 26 thumbnails; the currently selected image
+    is highlighted with a checkmark.
+  * **Public menu**: breakfast item (07:00-11:00) correctly shows "فعلاً
+    موجود نیست" badge at 13:41 Tehran time + card is dimmed + add button
+    is disabled with "ناموجود" label.
+  * No console errors, no page errors.
+
+## Commit & push
+- Commit `8f6b14b feat: time-based item availability + media library browser`
+  (8 files, +426 / -15).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+## Unresolved issues / risks & next-phase recommendations
+1. **Search is still name/description only** — could add search-by-category
+   and a popularity sort (would need a per-item view/add counter).
+   (Carried over from round 4.)
+2. **Order notifications are poll-based** (30s). For true real-time push,
+   could add a WebSocket mini-service. (Carried over from round 5.)
+3. **No order editing** — once submitted, the customer can't modify the
+   order. Would need a customer-side edit flow. (Carried over from round 7.)
+4. **Content mismatch** (VLM-flagged, pre-existing): hero text is Persian
+   cuisine but hero image shows pizza/pasta/burgers. Admin can fix via
+   `heroImage` in Settings. (Carried over.)
+5. **Featured section doesn't show availability badges** — only the
+   MenuSection ItemCard has the time-window badge. The FeaturedCard in
+   FeaturedSection.tsx should also show it. Small fix.
+6. **No bulk admin operations** — can't bulk-toggle availability, bulk-
+   delete, or drag-to-reorder items. Would need a multi-select + drag
+   interface.
+
+Recommended priority for the next 15-min round: pick #5 (featured section
+availability badge — small, ensures consistency) or #2 (search-by-category
++ popularity sort — medium, improves discovery). #4 is a content fix the
+admin can do themselves.
