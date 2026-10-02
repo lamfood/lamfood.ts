@@ -170,11 +170,17 @@ export default function Home() {
 
   const searchResults = useMemo<MenuItemDTO[]>(() => {
     if (searchQuery.length === 0) return []
-    const matched = (items ?? []).filter(
-      (item) =>
+    // Search by name, description, AND category label — so searching
+    // "برگر" matches items in the burgers category even if the name
+    // doesn't contain the word.
+    const matched = (items ?? []).filter((item) => {
+      const catLabel = CATEGORIES.find((c) => c.key === item.category)?.label ?? ""
+      return (
         item.name.toLowerCase().includes(searchQuery) ||
-        (item.description ?? "").toLowerCase().includes(searchQuery)
-    )
+        (item.description ?? "").toLowerCase().includes(searchQuery) ||
+        catLabel.toLowerCase().includes(searchQuery)
+      )
+    })
     // Apply category filter (null = all categories).
     const filtered =
       effectiveCategoryFilter === null
@@ -186,6 +192,12 @@ export default function Home() {
     }
     if (effectiveSort === "price-desc") {
       return [...filtered].sort((a, b) => b.price - a.price)
+    }
+    if (effectiveSort === "name-asc") {
+      return [...filtered].sort((a, b) => a.name.localeCompare(b.name, "fa"))
+    }
+    if (effectiveSort === "name-desc") {
+      return [...filtered].sort((a, b) => b.name.localeCompare(a.name, "fa"))
     }
     return filtered
   }, [items, searchQuery, effectiveCategoryFilter, effectiveSort])

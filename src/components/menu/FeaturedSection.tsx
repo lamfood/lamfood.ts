@@ -1,12 +1,13 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Minus, Plus, Sparkles, UtensilsCrossed } from "lucide-react"
+import { Clock, Minus, Plus, Sparkles, UtensilsCrossed } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { categoryLabel } from "@/lib/categories"
 import { faNumber, formatPrice } from "@/lib/format"
+import { isItemAvailableNow, formatTimeFa } from "@/lib/availability"
 import { useBasketStore } from "@/lib/basket-store"
 import type { MenuItemDTO } from "@/lib/types"
 
@@ -91,6 +92,10 @@ function FeaturedCard({
   const add = useBasketStore((state) => state.add)
   const setQty = useBasketStore((state) => state.setQty)
 
+  /** Time-of-day availability — checked client-side so it updates live. */
+  const hasTimeWindow = !!(item.availableFrom && item.availableTo)
+  const availableNow = isItemAvailableNow(item.availableFrom, item.availableTo)
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 16 }}
@@ -98,7 +103,7 @@ function FeaturedCard({
       transition={{ duration: 0.3, delay: Math.min(index, 6) * 0.05, ease: "easeOut" }}
       className="snap-start"
     >
-      <Card className="group flex h-full w-[280px] shrink-0 flex-col gap-0 overflow-hidden rounded-2xl py-0 transition-shadow hover:shadow-xl sm:w-[300px]">
+      <Card className={`group flex h-full w-[280px] shrink-0 flex-col gap-0 overflow-hidden rounded-2xl py-0 transition-shadow hover:shadow-xl sm:w-[300px] ${!availableNow ? "opacity-60" : ""}`}>
         {/* Image — clickable to open the details dialog */}
         <button
           type="button"
@@ -123,6 +128,19 @@ function FeaturedCard({
             <Sparkles className="size-3" aria-hidden />
             پیشنهاد شف
           </span>
+          {/* Availability badges — same treatment as the MenuSection ItemCard */}
+          {hasTimeWindow && !availableNow ? (
+            <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-destructive/90 px-2.5 py-1 text-[11px] font-bold text-white shadow-md backdrop-blur">
+              <Clock className="size-3" aria-hidden />
+              فعلاً موجود نیست
+            </span>
+          ) : null}
+          {hasTimeWindow && availableNow ? (
+            <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-background/85 px-2 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+              <Clock className="size-2.5" aria-hidden />
+              {formatTimeFa(item.availableFrom!)}—{formatTimeFa(item.availableTo!)}
+            </span>
+          ) : null}
         </button>
 
         <div className="flex flex-1 flex-col gap-2 p-4">
@@ -155,11 +173,12 @@ function FeaturedCard({
               <Button
                 size="sm"
                 className="h-10 rounded-full px-4"
-                onClick={() => add(item)}
-                aria-label={`افزودن ${item.name} به سبد خرید`}
+                disabled={!availableNow}
+                onClick={() => availableNow && add(item)}
+                aria-label={availableNow ? `افزودن ${item.name} به سبد خرید` : `${item.name} فعلاً موجود نیست`}
               >
                 <Plus className="size-4" aria-hidden />
-                افزودن
+                {availableNow ? "افزودن" : "ناموجود"}
               </Button>
             ) : (
               <div className="flex h-10 items-center gap-1 rounded-full bg-primary px-1 text-primary-foreground">

@@ -167,7 +167,7 @@ export default function StickyCategoryNav({
                 <Input
                   value={query}
                   onChange={(event) => onQueryChange(event.target.value)}
-                  placeholder="جستجو در منو…"
+                  placeholder="جستجو در منو (نام، توضیحات، دسته)…"
                   inputMode="search"
                   autoFocus
                   aria-label="جستجو در منو"
