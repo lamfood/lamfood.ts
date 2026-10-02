@@ -19,9 +19,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { apiFetch, ApiError } from "@/lib/api"
-import { applyTheme } from "@/components/ThemeProvider"
-import type { PublicConfigResponse, RestaurantConfig, ThemeColors } from "@/lib/types";
+import { apiFetch, ApiError } from "@/lib/api";
+import { applyTheme } from "@/components/ThemeProvider";
+import type {
+  PublicConfigResponse,
+  RestaurantConfig,
+  ThemeColors,
+} from "@/lib/types";
 
 const TIME_RE = /^\d{1,2}:\d{2}$/;
 const WHATSAPP_RE = /^\d+$/;
@@ -83,11 +87,22 @@ function ColorField({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const normalized = value.startsWith("#") ? value.slice(1) : value;
+  // Local editable text so typing isn't fought by the controlled value.
+  // Syncs from the parent when the color changes externally (e.g. swatch).
+  const [text, setText] = useState(value);
 
-  function handleText(text: string) {
-    // Allow partial typing; only push valid full hex codes to the state.
-    if (HEX_RE.test(text)) onChange(formatHex(text));
+  useEffect(() => {
+    setText(value);
+  }, [value]);
+
+  function handleText(input: string) {
+    setText(input); // always allow typing
+    if (HEX_RE.test(input)) onChange(formatHex(input));
+  }
+
+  function handleBlur() {
+    // Commit on blur so a partial value falls back to the saved color.
+    if (!HEX_RE.test(text)) setText(value);
   }
 
   return (
@@ -95,8 +110,8 @@ function ColorField({
       <div className="flex items-center gap-2 rounded-xl border border-input bg-background p-1.5">
         <input
           type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          value={HEX_RE.test(value) ? value : "#000000"}
+          onChange={(e) => onChange(e.target.value.toUpperCase())}
           aria-label={`${label} — انتخاب رنگ`}
           className="size-9 shrink-0 cursor-pointer rounded-lg border border-border bg-transparent"
         />
@@ -104,8 +119,9 @@ function ColorField({
           id={id}
           dir="ltr"
           className="h-10 border-0 bg-transparent font-mono text-sm uppercase shadow-none"
-          value={`#${normalized}`}
+          value={text}
           onChange={(e) => handleText(e.target.value)}
+          onBlur={handleBlur}
           maxLength={7}
           spellCheck={false}
         />
@@ -114,10 +130,10 @@ function ColorField({
   );
 }
 
-/** Normalize a hex value to lowercase with a leading # (keeps the schema happy). */
+/** Normalize a hex value to uppercase with a leading # (keeps the schema happy). */
 function formatHex(value: string): string {
   const cleaned = value.replace(/^#/, "");
-  return `#${cleaned.toLowerCase()}`;
+  return `#${cleaned.toUpperCase()}`;
 }
 
 export default function SettingsForm({
