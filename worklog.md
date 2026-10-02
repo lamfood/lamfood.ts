@@ -378,3 +378,151 @@ Recommended priority for the next 15-min round: pick #5 (admin dark
 mode — trivial, just add ThemeToggle to AdminDashboard header) or #1
 (order persistence — bigger but high-impact). #6 (hero overlay in dark
 mode) is also a cheap polish win.
+
+---
+Task ID: 4
+Agent: main (webDevReview — cron-triggered round 3)
+Task: QA the current state via agent-browser, fix any bugs found, then add
+new features and styling polish. Mandatory: improve styling with more
+details and add more features/functionality.
+
+## Current project status (assessment at start of round)
+- All previous work pushed (commits `77fe475` → `1093f98` → `4a99d94`):
+  12 categories, theme-tokens bug fix, CategoryGrid, featured items, item
+  details dialog, back-to-top button, admin featured toggle, dark mode,
+  search filters, image MIME fix, hero polish.
+- Dev server running on port 3000; 24 items seeded (6 featured).
+- /admin login works (admin/admin123).
+- Round-3 handover recommended: #5 admin dark mode, #6 hero dark overlay
+  polish, #1 order persistence (highest-impact).
+
+## QA findings (via agent-browser + VLM)
+- ✅ All previous features working: 24/24 images load, dark mode toggle
+  (desktop nav + mobile hero), search filters (category + sort), featured
+  section, item details dialog, admin featured toggle.
+- ⚠️ Gaps identified (carried over from round 3):
+  * Admin dashboard had no ThemeToggle (always light mode).
+  * Hero dark mode overlay was primary-tinted, so the food photography
+    competed with the hero copy (VLM flagged this in round 2).
+  * WhatsApp checkout was URL-only — no order persistence, no order ID,
+    no admin visibility into incoming orders.
+
+## Goals / completed modifications / verification
+
+### New feature: order persistence (#1 — highest-impact recommendation)
+- **Schema** (`prisma/schema.prisma`): new `Order` model with `publicCode`
+  (unique, human-friendly like "LF-7K3X9"), `status` enum (NEW/SEEN/
+  PREPARING/READY/DELIVERED/CANCELLED), `customerName`/`note`,
+  `linesJson` (basket snapshot), `total`, `customerIp`, timestamps.
+  Indexes on `status` + `createdAt`.
+- **Server lib** (`src/lib/orders.ts`): `generateUniqueOrderCode()` —
+  base32 alphabet (no ambiguous chars: no 0/O, 1/I/L, U), 5 chars,
+  DB collision-checked with 5 retries. `toOrderDTO()` parses `linesJson`
+  safely (corrupt JSON → empty lines, order still visible).
+- **Types** (`src/lib/types.ts`): `OrderDTO`, `OrderLineDTO`,
+  `OrderStatus`, `ORDER_STATUSES`, `ORDER_STATUS_META` (Persian label +
+  color tone per status), `PublicOrderResponse` (no IP/admin fields).
+- **Public API** (`src/app/api/orders/route.ts`): POST endpoint.
+  CSRF-guarded (`assertSameOrigin`), per-IP rate-limited (10 orders /
+  10 min, in-memory sliding window), validates lines (max 50, max 99
+  qty each), re-derives total server-side (tampered prices can't
+  persist), returns `publicCode` + `status` + `total` + `createdAt`.
+- **Admin API**:
+  * `src/app/api/admin/orders/route.ts`: GET (list, optional
+    `?status=NEW` filter, newest first, max 200).
+  * `src/app/api/admin/orders/[id]/route.ts`: GET (single) + PUT
+    (status update).
+- **BasketSheet** (`src/components/menu/BasketSheet.tsx`): checkout now
+  POSTs to `/api/orders` first, then opens WhatsApp with the order code
+  in the message (so the restaurant can match the customer's WhatsApp
+  message to the persisted order). Shows a Loader2 spinner during submit
+  + a success chip with the order code. Clears the basket on success.
+  Works without WhatsApp too (just records the order + shows the code).
+- **OrdersManager** (`src/components/admin/OrdersManager.tsx`): new
+  admin Orders tab with:
+  * Stats cards (total / new / preparing / ready) — color-coded.
+  * Search (by code, customer name, note, or item name) + status filter
+    dropdown + reload button.
+  * Order cards in a responsive grid (code, status badge, customer,
+    line preview, total, item count, "مشاهده" button).
+  * Detail dialog (AlertDialog) with full line items (image + name +
+    qty + line total), customer note, order total, and 6 status-change
+    chips. Auto-marks NEW → SEEN on first open.
+  * Color-coded status badges: new=amber, info=sky, warn=orange,
+    good=emerald, done=primary, bad=destructive.
+
+### Admin dark mode (#5)
+- `AdminDashboard.tsx`: added `ThemeToggle` to the admin header (between
+  "مشاهده منو" and "خروج"). The dark neutrals in ThemeProvider already
+  handle the sidebar tokens, so admin gets full dark mode for free.
+- Also added the new "سفارش‌ها" (Orders) tab to the TabsList.
+
+### Hero dark mode polish (#6)
+- `Hero.tsx`: in dark mode, the gradient overlay switches from
+  primary-tinted to black-tinted (`from-black/85 via-black/65 to-black/80`)
+  so the food photography doesn't compete with the hero copy. Added an
+  extra dark scrim (hidden in light mode) for better text contrast.
+
+### Styling polish (mandatory)
+- `MenuFooter.tsx`: added a subtle accent top border (`h-1 bg-accent/60`)
+  for visual separation from the menu content; the copyright line now
+  uses `config.name` instead of a hardcoded "لم‌فود".
+- `BasketSheet.tsx`: checkout button shows a Loader2 spinner + "در حال
+  ثبت سفارش…" during submit; success chip with the order code appears
+  below the button.
+
+### Verification
+- Lint: `bun run lint` → 0 errors.
+- Endpoints: `GET /` 200, `GET /admin` 200, `GET /api/menu` 200,
+  `POST /api/orders` 201, `GET /api/admin/orders` 200,
+  `GET /api/admin/orders/[id]` 200, `PUT /api/admin/orders/[id]` 200.
+- agent-browser end-to-end test:
+  * **Submit order**: added 2 items (چیزبرگر + لاته = 285 هزار تومان),
+    filled name "تست مشتری" + note "سس اضافه لطفاً", clicked submit →
+    order `LF-QRJKB` created, WhatsApp opened with the code in the
+    message, basket cleared, success chip shown.
+  * **Admin Orders tab**: order `LF-QRJKB` appears with SEEN status
+    (auto-marked on open); stats card shows "۱" total; detail dialog
+    shows both line items with images + the note + total; status change
+    to "در حال آماده‌سازی" works (badge updates live, PUT 200).
+  * **Admin dark mode**: ThemeToggle in admin header works; background
+    `#E8EEF2` → `#0b1f23`; card `#fff` → `#102a30`.
+  * **Home dark mode hero**: VLM review = MINOR_ISSUES (text readability
+    improved vs round 2; the only remaining issue is a pre-existing
+    content mismatch — Persian-text hero over Western-food imagery —
+    not a UI bug).
+  * No console errors, no page errors.
+
+## Commit & push
+- Commit `8bab00d feat(orders): order persistence + admin Orders tab;
+  dark mode polish` (11 files, +1106 / -16).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+## Unresolved issues / risks & next-phase recommendations
+1. **No item options/addons** — e.g. burger size, extra cheese, spiciness.
+   Would need a related `ItemOption` model and a more complex basket line.
+   (Carried over from round 3.)
+2. **ItemForm image upload** requires the user to pick a file or paste a
+   URL; there's no "pick from existing uploads" media library browser.
+   (Carried over from round 3.)
+3. **Search is still name/description only** — could add search-by-category
+   and a popularity sort (would need a per-item view/add counter).
+   (Carried over from round 3.)
+4. **Order notifications** — the admin has to manually refresh the Orders
+   tab to see new orders. Could add either:
+   - A lightweight poll (e.g. `GET /api/admin/orders?since=…` every 30s
+     with a toast on new orders), or
+   - A WebSocket mini-service (the project already has websocket support
+     per the sandbox README) for real-time push.
+5. **Order status doesn't notify the customer** — the customer gets the
+   order code but has no way to check its status. Could add a public
+   `/track?code=LF-XXXXX` page that shows the current status.
+6. **Content mismatch** (VLM-flagged, pre-existing): the hero text is
+   Persian/Iranian cuisine but the hero image shows pizza/pasta/burgers.
+   The admin can fix this by changing `heroImage` in Settings.
+
+Recommended priority for the next 15-min round: pick #4 (order
+notifications — high-impact for restaurant ops; a 30s poll + toast is
+the cheap version) or #5 (public order tracking page — small, user-
+visible, builds on the order code we just shipped). #6 is a content fix
+the admin can do themselves.
