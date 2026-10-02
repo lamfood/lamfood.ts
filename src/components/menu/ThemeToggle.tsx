@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 /**
  * Light/dark mode toggle button — flips the `.dark` class on `<html>` and
  * persists the choice to localStorage. Animated sun↔moon swap with a 250ms
- * rotation; respects `prefers-color-scheme: dark` on first visit.
+ * rotation. Default is LIGHT mode — the user must explicitly opt into dark.
  *
  * Decoupled from `next-themes` (we manage the class ourselves) so we can keep
  * `applyTheme()` in sync — when the mode flips, derived tokens must be

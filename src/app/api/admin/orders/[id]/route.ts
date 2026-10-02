@@ -74,3 +74,30 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
     )
   }
 }
+
+/** Delete a single order (admin only). */
+export async function DELETE(req: NextRequest, ctx: RouteContext) {
+  const csrf = assertSameOrigin(req)
+  if (csrf) return csrf
+  const unauthorized = requireAdmin(req)
+  if (unauthorized) return unauthorized
+
+  const { id } = await ctx.params
+  try {
+    const existing = await db.order.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json(
+        { error: "not_found", message: "سفارش یافت نشد." },
+        { status: 404 },
+      )
+    }
+    await db.order.delete({ where: { id } })
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error("DELETE /api/admin/orders/[id] failed:", err)
+    return NextResponse.json(
+      { error: "server_error", message: "حذف سفارش ناموفق بود." },
+      { status: 500 },
+    )
+  }
+}

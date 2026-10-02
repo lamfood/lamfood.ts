@@ -198,6 +198,13 @@ export default function BasketSheet({ open, onOpenChange, config }: BasketSheetP
             <Button className="mt-1 h-11 rounded-full px-6" onClick={scrollToMenu}>
               مشاهده منو
             </Button>
+            <a
+              href="/track"
+              className="mt-2 flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              <Package className="size-4" aria-hidden />
+              پیگیری سفارش
+            </a>
           </div>
         ) : (
           <>

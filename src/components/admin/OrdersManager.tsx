@@ -10,6 +10,7 @@ import {
   RefreshCcw,
   Search,
   ShoppingBag,
+  Trash2,
   X,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -119,6 +120,13 @@ export default function OrdersManager({
   const [detailOpen, setDetailOpen] = useState<boolean>(false)
   const [updatingStatus, setUpdatingStatus] = useState<OrderStatus | null>(null)
 
+  /** Delete single order confirmation dialog state. */
+  const [deleting, setDeleting] = useState<OrderDTO | null>(null)
+  const [deletePending, setDeletePending] = useState<boolean>(false)
+  /** Clear all orders confirmation dialog state. */
+  const [clearOpen, setClearOpen] = useState<boolean>(false)
+  const [clearPending, setClearPending] = useState<boolean>(false)
+
   const load = useCallback(async () => {
     setLoadFailed(false)
     try {
@@ -206,6 +214,58 @@ export default function OrdersManager({
     }
   }
 
+  /** Delete a single order (with confirmation). */
+  async function handleDeleteOrder() {
+    if (!deleting || deletePending) return
+    setDeletePending(true)
+    try {
+      await apiFetch<{ ok: boolean }>(`/api/admin/orders/${deleting.id}`, {
+        method: "DELETE",
+      })
+      toast.success(`سفارش ${deleting.publicCode} حذف شد`)
+      setOrders((prev) =>
+        prev ? prev.filter((o) => o.id !== deleting.id) : prev,
+      )
+      // Close the detail dialog if the deleted order was open
+      if (selected?.id === deleting.id) {
+        setDetailOpen(false)
+        setSelected(null)
+      }
+      setDeleting(null)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onUnauthorized()
+        return
+      }
+      toast.error(err instanceof Error ? err.message : "حذف سفارش ناموفق بود")
+    } finally {
+      setDeletePending(false)
+    }
+  }
+
+  /** Clear all orders (with confirmation). Irreversible. */
+  async function handleClearAll() {
+    if (clearPending) return
+    setClearPending(true)
+    try {
+      const data = await apiFetch<{ ok: boolean; deletedCount: number }>(
+        "/api/admin/orders",
+        { method: "DELETE" },
+      )
+      toast.success(`${faNumber(data.deletedCount)} سفارش پاک شد`)
+      setOrders([])
+      setClearOpen(false)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onUnauthorized()
+        return
+      }
+      toast.error(err instanceof Error ? err.message : "پاک‌سازی ناموفق بود")
+    } finally {
+      setClearPending(false)
+    }
+  }
+
   // Loading skeleton
   if (orders === null) {
     return (
@@ -276,6 +336,17 @@ export default function OrdersManager({
           <Button variant="outline" onClick={() => void load()} className="h-11" aria-label="بارگذاری مجدد">
             <RefreshCcw className="size-4" aria-hidden />
           </Button>
+          {orders && orders.length > 0 ? (
+            <Button
+              variant="outline"
+              className="h-11 gap-2 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => setClearOpen(true)}
+              aria-label="پاک‌سازی همه سفارش‌ها"
+            >
+              <Trash2 className="size-4" aria-hidden />
+              <span className="hidden sm:inline">پاک‌سازی همه</span>
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -310,6 +381,7 @@ export default function OrdersManager({
               key={order.id}
               order={order}
               onOpen={() => openDetail(order)}
+              onDelete={() => setDeleting(order)}
             />
           ))}
         </div>
@@ -323,6 +395,80 @@ export default function OrdersManager({
         updatingStatus={updatingStatus}
         onChangeStatus={changeStatus}
       />
+
+      {/* Delete single order confirmation */}
+      <AlertDialog
+        open={deleting !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletePending) setDeleting(null)
+        }}
+      >
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف سفارش</AlertDialogTitle>
+            <AlertDialogDescription>
+              آیا از حذف سفارش «{deleting?.publicCode}» مطمئن هستید؟ این عمل بازگشت‌پذیر نیست.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePending}>انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              disabled={deletePending}
+              onClick={(e) => {
+                e.preventDefault()
+                void handleDeleteOrder()
+              }}
+            >
+              {deletePending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  حذف…
+                </>
+              ) : (
+                "حذف"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Clear all orders confirmation */}
+      <AlertDialog
+        open={clearOpen}
+        onOpenChange={(open) => {
+          if (!open && !clearPending) setClearOpen(false)
+        }}
+      >
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>پاک‌سازی همه سفارش‌ها</AlertDialogTitle>
+            <AlertDialogDescription>
+              آیا مطمئن هستید؟ تمام {faNumber(orders?.length ?? 0)} سفارش برای همیشه حذف می‌شوند. این عمل بازگشت‌پذیر نیست.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearPending}>انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              disabled={clearPending}
+              onClick={(e) => {
+                e.preventDefault()
+                void handleClearAll()
+              }}
+            >
+              {clearPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  پاک‌سازی…
+                </>
+              ) : (
+                "پاک‌سازی همه"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -364,9 +510,11 @@ function StatCard({
 function OrderCard({
   order,
   onOpen,
+  onDelete,
 }: {
   order: OrderDTO
   onOpen: () => void
+  onDelete: () => void
 }) {
   const itemCount = order.lines.reduce((sum, l) => sum + l.qty, 0)
   return (
@@ -413,16 +561,28 @@ function OrderCard({
           <Badge variant="secondary" className="px-2 py-0 text-[10px]">
             {faNumber(itemCount)} آیتم
           </Badge>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onOpen}
-            className="h-9 gap-1 px-3 text-xs font-medium text-primary hover:bg-primary/10"
-            aria-label={`مشاهدهٔ جزئیات سفارش ${order.publicCode}`}
-          >
-            مشاهده
-            <ChevronLeft className="size-4" aria-hidden />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onOpen}
+              className="h-9 gap-1 px-3 text-xs font-medium text-primary hover:bg-primary/10"
+              aria-label={`مشاهدهٔ جزئیات سفارش ${order.publicCode}`}
+            >
+              مشاهده
+              <ChevronLeft className="size-4" aria-hidden />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDelete}
+              className="size-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              aria-label={`حذف سفارش ${order.publicCode}`}
+              title="حذف سفارش"
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

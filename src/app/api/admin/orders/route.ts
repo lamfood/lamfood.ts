@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 
-import { requireAdmin } from "@/lib/auth"
+import { assertSameOrigin, requireAdmin } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { toOrderDTO } from "@/lib/orders"
 import { ORDER_STATUSES, type OrderStatus } from "@/lib/types"
@@ -45,6 +45,25 @@ export async function GET(req: NextRequest) {
     console.error("GET /api/admin/orders failed:", err)
     return NextResponse.json(
       { error: "server_error", message: "خطا در دریافت سفارش‌ها." },
+      { status: 500 },
+    )
+  }
+}
+
+/** Clear all orders (admin only). Irreversible — used for development/reset. */
+export async function DELETE(req: NextRequest) {
+  const csrf = assertSameOrigin(req)
+  if (csrf) return csrf
+  const unauthorized = requireAdmin(req)
+  if (unauthorized) return unauthorized
+
+  try {
+    const result = await db.order.deleteMany({})
+    return NextResponse.json({ ok: true, deletedCount: result.count })
+  } catch (err) {
+    console.error("DELETE /api/admin/orders failed:", err)
+    return NextResponse.json(
+      { error: "server_error", message: "پاک‌سازی سفارش‌ها ناموفق بود." },
       { status: 500 },
     )
   }
