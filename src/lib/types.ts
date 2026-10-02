@@ -3,6 +3,16 @@ export interface LocationInfo {
   lng: number
 }
 
+/** Dynamic brand colors persisted in config.json and applied at runtime. */
+export interface ThemeColors {
+  primary: string
+  primaryForeground: string
+  accent: string
+  accentForeground: string
+  background: string
+  foreground: string
+}
+
 export interface RestaurantConfig {
   name: string
   nameEn: string
@@ -19,6 +29,7 @@ export interface RestaurantConfig {
   location: LocationInfo
   instagram: string
   snappfood: string
+  theme: ThemeColors
 }
 
 export interface MenuItemDTO {

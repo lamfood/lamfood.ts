@@ -45,8 +45,8 @@ export default function Hero({ config, isOpenNow, onOpenLocation }: HeroProps) {
         aria-hidden
         className={
           hasHeroImage
-            ? "absolute inset-0 -z-10 bg-gradient-to-b from-[#0f4a50]/95 via-[#166b73]/85 to-[#166b73]/70"
-            : "absolute inset-0 -z-10 bg-gradient-to-b from-[#0f4a50] via-[#166b73] to-[#0f4a50]"
+            ? "absolute inset-0 -z-10 bg-gradient-to-b from-primary/95 via-primary/85 to-primary/70"
+            : "absolute inset-0 -z-10 bg-gradient-to-b from-primary via-primary/90 to-primary"
         }
       />
       {/* Decorative amber blur circles for depth */}

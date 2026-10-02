@@ -4,11 +4,39 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 
-import type { RestaurantConfig } from "@/lib/types";
+import type { RestaurantConfig, ThemeColors } from "@/lib/types";
 
 const CONFIG_PATH = path.join(process.cwd(), "config.json");
 
 const timeRe = /^(?:[01]?\d|2[0-4]):[0-5]\d$/;
+
+/** Hex color (#rgb or #rrggbb). */
+const hexColor = z
+  .string()
+  .trim()
+  .regex(
+    /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/,
+    "رنگ باید به صورت HEX باشد (مثل #166b73)",
+  )
+  .default("#166b73");
+
+export const themeSchema = z.object({
+  primary: hexColor,
+  primaryForeground: hexColor,
+  accent: hexColor,
+  accentForeground: hexColor,
+  background: hexColor,
+  foreground: hexColor,
+});
+
+export const DEFAULT_THEME: ThemeColors = {
+  primary: "#166b73",
+  primaryForeground: "#fbfffe",
+  accent: "#faa916",
+  accentForeground: "#2b1d02",
+  background: "#fbfffe",
+  foreground: "#0d3b41",
+};
 
 export const restaurantConfigSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -39,6 +67,7 @@ export const restaurantConfigSchema = z.object({
     .default({ lat: 35.7, lng: 51.4 }),
   instagram: z.string().trim().max(300).default(""),
   snappfood: z.string().trim().max(300).default(""),
+  theme: themeSchema.default(DEFAULT_THEME),
 });
 
 export const restaurantUpdateSchema = z.object({
@@ -61,6 +90,7 @@ const DEFAULT_RESTAURANT: RestaurantConfig = {
   location: { lat: 35.7, lng: 51.4 },
   instagram: "",
   snappfood: "",
+  theme: DEFAULT_THEME,
 };
 
 export interface AdminConfig {

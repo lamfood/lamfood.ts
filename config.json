@@ -17,7 +17,15 @@
       "lng": 51.817077
     },
     "instagram": "https://instagram.com/lamfood.ir",
-    "snappfood": "https://snappfood.ir/restaurant/menu/example"
+    "snappfood": "https://snappfood.ir/restaurant/menu/example",
+    "theme": {
+      "primary": "#744816",
+      "primaryForeground": "#fbfffe",
+      "accent": "#faa916",
+      "accentForeground": "#2b1d02",
+      "background": "#fbfffe",
+      "foreground": "#0d3b41"
+    }
   },
   "admin": {
     "username": "admin",
