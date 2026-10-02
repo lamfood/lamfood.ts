@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 
-import { ImagePlus, Loader2, Link2, X } from "lucide-react"
+import { GripVertical, ImagePlus, Loader2, Link2, Plus, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
@@ -28,7 +28,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { apiFetch, ApiError } from "@/lib/api"
 import { CATEGORIES } from "@/lib/categories"
 import { faNumber, formatPrice } from "@/lib/format"
-import type { MenuItemDTO } from "@/lib/types"
+import type { ItemOptionGroupDTO, MenuItemDTO } from "@/lib/types"
 
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 // 2 MB
 
@@ -58,6 +58,8 @@ export default function ItemForm({
   const [image, setImage] = useState<string | null>(null)
   const [available, setAvailable] = useState<boolean>(true)
   const [featured, setFeatured] = useState<boolean>(false)
+  /** Admin-defined option groups (e.g. size, spice level). Empty = no options. */
+  const [optionGroups, setOptionGroups] = useState<ItemOptionGroupDTO[]>([])
 
   const [uploading, setUploading] = useState<boolean>(false)
   const [saving, setSaving] = useState<boolean>(false)
@@ -75,6 +77,7 @@ export default function ItemForm({
     setImage(initial?.image ?? null)
     setAvailable(initial?.available ?? true)
     setFeatured(initial?.featured ?? false)
+    setOptionGroups(initial?.options ?? [])
     setShowUrlInput(false)
     setUploading(false)
     setSaving(false)
@@ -137,6 +140,7 @@ export default function ItemForm({
         available,
         featured,
         sortOrder: initial?.sortOrder ?? 0,
+        options: optionGroups,
       }
 
       if (initial) {
@@ -354,6 +358,9 @@ export default function ItemForm({
             </div>
           </div>
 
+          {/* Options / add-ons editor */}
+          <OptionsEditor optionGroups={optionGroups} onChange={setOptionGroups} />
+
           <Button type="submit" disabled={saving || uploading} className="h-12 w-full font-bold">
             {saving ? (
               <>
@@ -367,5 +374,215 @@ export default function ItemForm({
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Options / add-ons editor                                             */
+/* ------------------------------------------------------------------ */
+
+/** Small id generator for new option groups + options. Not crypto-secure
+ *  (it's a form-field key, not a security boundary). */
+function genId(prefix: string): string {
+  return `${prefix}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+function OptionsEditor({
+  optionGroups,
+  onChange,
+}: {
+  optionGroups: ItemOptionGroupDTO[]
+  onChange: (groups: ItemOptionGroupDTO[]) => void
+}) {
+  function addGroup() {
+    onChange([
+      ...optionGroups,
+      { id: genId("grp"), label: "", options: [{ id: genId("opt"), name: "", price: 0, isDefault: true }] },
+    ])
+  }
+
+  function removeGroup(groupIdx: number) {
+    onChange(optionGroups.filter((_, i) => i !== groupIdx))
+  }
+
+  function updateGroupLabel(groupIdx: number, label: string) {
+    onChange(
+      optionGroups.map((g, i) => (i === groupIdx ? { ...g, label } : g)),
+    )
+  }
+
+  function addOption(groupIdx: number) {
+    onChange(
+      optionGroups.map((g, i) =>
+        i === groupIdx
+          ? { ...g, options: [...g.options, { id: genId("opt"), name: "", price: 0, isDefault: false }] }
+          : g,
+      ),
+    )
+  }
+
+  function removeOption(groupIdx: number, optIdx: number) {
+    onChange(
+      optionGroups.map((g, i) =>
+        i === groupIdx
+          ? { ...g, options: g.options.filter((_, j) => j !== optIdx) }
+          : g,
+      ),
+    )
+  }
+
+  function updateOption(groupIdx: number, optIdx: number, patch: Partial<{ name: string; priceText: string; isDefault: boolean }>) {
+    onChange(
+      optionGroups.map((g, i) => {
+        if (i !== groupIdx) return g
+        return {
+          ...g,
+          options: g.options.map((o, j) => {
+            if (j !== optIdx) return o
+            const next = { ...o }
+            if (patch.name !== undefined) next.name = patch.name
+            if (patch.priceText !== undefined) {
+              const n = Number(patch.priceText)
+              next.price = Number.isFinite(n) && n >= 0 ? Math.round(n) : 0
+            }
+            if (patch.isDefault !== undefined) next.isDefault = patch.isDefault
+            return next
+          }),
+        }
+      }),
+    )
+  }
+
+  /** When an option is marked default, unset isDefault on its siblings
+   *  (radio-style: exactly one default per group). */
+  function setDefault(groupIdx: number, optIdx: number) {
+    onChange(
+      optionGroups.map((g, i) => {
+        if (i !== groupIdx) return g
+        return {
+          ...g,
+          options: g.options.map((o, j) => ({ ...o, isDefault: j === optIdx })),
+        }
+      }),
+    )
+  }
+
+  return (
+    <div className="grid gap-3 rounded-xl border bg-muted/20 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <GripVertical className="size-4 text-muted-foreground/60" aria-hidden />
+          <Label className="text-sm font-bold">گزینه‌های اضافی</Label>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addGroup}
+          className="h-8 gap-1.5 px-2.5 text-xs"
+        >
+          <Plus className="size-3.5" aria-hidden />
+          گروه جدید
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        گروهی از گزینه‌ها که مشتری باید یکی را انتخاب کند (مثل اندازه یا سطح تندی).
+        قیمت هر گزینه به قیمت پایه آیتم اضافه می‌شود.
+      </p>
+
+      {optionGroups.length === 0 ? (
+        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed py-6 text-center text-xs text-muted-foreground">
+          <GripVertical className="size-4" aria-hidden />
+          این آیتم گزینه‌ای ندارد — با «گروه جدید» اضافه کنید.
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {optionGroups.map((group, gi) => (
+            <div key={group.id} className="grid gap-2 rounded-lg border bg-background p-3">
+              <div className="flex items-center gap-2">
+                <Input
+                  value={group.label}
+                  onChange={(e) => updateGroupLabel(gi, e.target.value)}
+                  placeholder="عنوان گروه (مثل: اندازه)"
+                  className="h-9 flex-1 text-sm font-medium"
+                  aria-label={`عنوان گروه ${gi + 1}`}
+                  maxLength={60}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => removeGroup(gi)}
+                  aria-label="حذف این گروه"
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </Button>
+              </div>
+
+              <div className="grid gap-2">
+                {group.options.map((opt, oi) => (
+                  <div key={opt.id} className="flex flex-wrap items-center gap-2">
+                    {/* Default radio */}
+                    <input
+                      type="radio"
+                      name={`default-${group.id}`}
+                      checked={opt.isDefault}
+                      onChange={() => setDefault(gi, oi)}
+                      aria-label="پیش‌فرض این گروه"
+                      className="size-4 shrink-0 cursor-pointer accent-primary"
+                    />
+                    <Input
+                      value={opt.name}
+                      onChange={(e) => updateOption(gi, oi, { name: e.target.value })}
+                      placeholder="نام گزینه (مثل: بزرگ)"
+                      className="h-9 min-w-[8rem] flex-1 text-sm"
+                      aria-label={`نام گزینه ${oi + 1}`}
+                      maxLength={60}
+                    />
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={opt.price === 0 ? "" : String(opt.price)}
+                        onChange={(e) => updateOption(gi, oi, { priceText: e.target.value })}
+                        placeholder="۰"
+                        dir="ltr"
+                        className="h-9 w-20 text-left text-sm"
+                        aria-label={`قیمت اضافه گزینه ${oi + 1} (هزار تومان)`}
+                      />
+                      <span className="shrink-0 text-xs text-muted-foreground">ه.ت</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => removeOption(gi, oi)}
+                      aria-label="حذف این گزینه"
+                      disabled={group.options.length <= 1}
+                    >
+                      <X className="size-4" aria-hidden />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => addOption(gi)}
+                className="h-8 w-fit gap-1.5 text-xs text-primary hover:bg-primary/10"
+              >
+                <Plus className="size-3.5" aria-hidden />
+                افزودن گزینه
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

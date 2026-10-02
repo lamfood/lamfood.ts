@@ -90,6 +90,7 @@ export default function BasketSheet({ open, onOpenChange, config }: BasketSheetP
             price: l.price,
             qty: l.qty,
             image: l.image,
+            selectedOptions: l.selectedOptions,
           })),
           customerName: customerName.trim(),
           note: note.trim(),
@@ -112,9 +113,15 @@ export default function BasketSheet({ open, onOpenChange, config }: BasketSheetP
     }
 
     // Build the WhatsApp message with the order code so the restaurant can
-    // match the customer's message to the persisted order.
+    // match the customer's message to the persisted order. Include selected
+    // options (if any) so the restaurant knows the exact configuration.
     const itemLines = lineList
-      .map((line) => `• ${faNumber(line.qty)}× ${line.name} — ${formatPrice(line.price * line.qty)}`)
+      .map((line) => {
+        const opts = line.selectedOptions && line.selectedOptions.length > 0
+          ? ` (${line.selectedOptions.join("، ")})`
+          : ""
+        return `• ${faNumber(line.qty)}× ${line.name}${opts} — ${formatPrice(line.price * line.qty)}`
+      })
       .join("\n")
 
     const messageParts = [
@@ -204,6 +211,11 @@ export default function BasketSheet({ open, onOpenChange, config }: BasketSheetP
 
                   <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                     <p className="truncate text-sm font-bold">{line.name}</p>
+                    {line.selectedOptions && line.selectedOptions.length > 0 ? (
+                      <p className="text-[11px] font-medium text-primary/80">
+                        {line.selectedOptions.join("، ")}
+                      </p>
+                    ) : null}
                     <p className="text-xs text-muted-foreground">{formatPrice(line.price)}</p>
                     <BasketStepper line={line} />
                   </div>

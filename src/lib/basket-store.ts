@@ -7,23 +7,41 @@ import { persist } from "zustand/middleware"
 export interface BasketAddItem {
   id: string
   name: string
+  /** Effective unit price (base + selected option deltas) in «هزار تومان». */
   price: number
   image: string | null
+  /** Names of the selected options at add time (e.g. «اندازه بزرگ»).
+   *  Optional — only present when the item had option groups. */
+  selectedOptions?: string[]
 }
 
 export interface BasketLine extends BasketAddItem {
   qty: number
 }
 
-/** Basket lines keyed by menu item id. */
+/** Basket lines keyed by a composite key: `${itemId}` when no options are
+ *  selected, or `${itemId}|${selectedOptions.join(",")}` when options are
+ *  present — so the same item with different option combinations becomes
+ *  separate basket lines (the customer can have a "small coffee" and a
+ *  "large coffee with extra shot" as two distinct lines). */
 export type BasketLines = Record<string, BasketLine>
 
 interface BasketState {
   lines: BasketLines
   add: (item: BasketAddItem) => void
-  setQty: (id: string, qty: number) => void
-  remove: (id: string) => void
+  setQty: (lineKey: string, qty: number) => void
+  remove: (lineKey: string) => void
   clear: () => void
+}
+
+/** Compute the basket line key for a given add-item. Same item + same
+ *  options → same key (so adding the same configuration increments the
+ *  existing line). Different options → different key (separate line). */
+export function basketLineKey(item: BasketAddItem): string {
+  if (item.selectedOptions && item.selectedOptions.length > 0) {
+    return `${item.id}|${item.selectedOptions.join(",")}`
+  }
+  return item.id
 }
 
 export const useBasketStore = create<BasketState>()(
@@ -32,10 +50,11 @@ export const useBasketStore = create<BasketState>()(
       lines: {},
       add: (item) =>
         set((state) => {
-          const existing = state.lines[item.id]
+          const key = basketLineKey(item)
+          const existing = state.lines[key]
           if (existing) {
             return {
-              lines: { ...state.lines, [item.id]: { ...existing, qty: existing.qty + 1 } },
+              lines: { ...state.lines, [key]: { ...existing, qty: existing.qty + 1 } },
             }
           }
           const next: BasketLine = {
@@ -43,9 +62,10 @@ export const useBasketStore = create<BasketState>()(
             name: item.name,
             price: item.price,
             image: item.image,
+            selectedOptions: item.selectedOptions,
             qty: 1,
           }
-          return { lines: { ...state.lines, [item.id]: next } }
+          return { lines: { ...state.lines, [key]: next } }
         }),
       setQty: (id, qty) =>
         set((state) => {

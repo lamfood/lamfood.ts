@@ -16,6 +16,8 @@ const orderLineSchema = z.object({
   price: z.number().int().min(0).max(100_000),
   qty: z.number().int().min(1).max(MAX_QTY_PER_LINE),
   image: z.string().nullable().optional(),
+  /** Names of selected options (e.g. «اندازه بزرگ، پنیر اضافه»). Optional. */
+  selectedOptions: z.array(z.string().trim().min(1).max(60)).max(10).optional(),
 })
 
 const createOrderSchema = z.object({
@@ -84,6 +86,7 @@ export async function POST(req: NextRequest) {
     price: l.price,
     qty: l.qty,
     image: l.image ?? null,
+    selectedOptions: l.selectedOptions ?? [],
   }))
   const total = lines.reduce((sum, l) => sum + l.price * l.qty, 0)
 

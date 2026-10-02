@@ -511,6 +511,11 @@ function OrderDetailDialog({
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold">{line.name}</p>
+                  {line.selectedOptions && line.selectedOptions.length > 0 ? (
+                    <p className="text-[11px] font-medium text-primary/80">
+                      {line.selectedOptions.join("، ")}
+                    </p>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">
                     {formatPrice(line.price)} × {faNumber(line.qty)}
                   </p>

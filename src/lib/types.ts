@@ -42,6 +42,33 @@ export interface MenuItemDTO {
   available: boolean
   featured: boolean
   sortOrder: number
+  /** Admin-defined add-ons (size, extra cheese, spiciness, ...).
+   *  Empty array if the item has no options. */
+  options: ItemOptionDTO[]
+}
+
+/** A selectable add-on for a menu item. `price` is in «هزار تومان» units
+ *  and is ADDED to the item's base price when the option is selected.
+ *  `isDefault` marks the option that's pre-selected when the customer opens
+ *  the item details dialog (e.g. the "medium" size). */
+export interface ItemOptionDTO {
+  /** Stable id within the item (used as the form field key). */
+  id: string
+  name: string
+  /** Price delta in «هزار تومان» (can be 0 for a free option like "no ice"). */
+  price: number
+  isDefault: boolean
+}
+
+/** Group of options where the customer picks exactly one (e.g. size).
+ *  A single MenuItem can have multiple option groups (e.g. size + spice level).
+ *  Stored on MenuItem.optionsJson as an array of these. */
+export interface ItemOptionGroupDTO {
+  id: string
+  /** Persian label shown above the group (e.g. «اندازه», «سطح تندی»). */
+  label: string
+  /** One of the options in `options` should have isDefault=true (or none). */
+  options: ItemOptionDTO[]
 }
 
 export type MenuResponse = { items: MenuItemDTO[] }
@@ -82,6 +109,11 @@ export interface OrderLineDTO {
   price: number
   qty: number
   image: string | null
+  /** Names of the selected options at submission time (e.g.
+   *  «اندازه بزرگ، پنیر اضافه»). Empty if the item had no options or none
+   *  were selected. The unit `price` already includes the option deltas;
+   *  this field is just for human-readable display on the order. */
+  selectedOptions?: string[]
 }
 
 /** Full order as returned by the API. */

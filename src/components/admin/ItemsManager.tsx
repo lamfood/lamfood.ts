@@ -107,6 +107,7 @@ export default function ItemsManager({ onUnauthorized }: { onUnauthorized: () =>
           available,
           featured: item.featured,
           sortOrder: item.sortOrder,
+          options: item.options,
         }),
       })
       setItems((prev) =>
@@ -140,6 +141,7 @@ export default function ItemsManager({ onUnauthorized }: { onUnauthorized: () =>
           available: item.available,
           featured,
           sortOrder: item.sortOrder,
+          options: item.options,
         }),
       })
       setItems((prev) =>

@@ -26,6 +26,11 @@ model MenuItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  /** Optional list of selectable add-ons (size, extra cheese, spiciness, ...).
+   *  Stored as a JSON array of {name, price, default?} objects so we don't
+   *  need a join table for a simple fixed-form menu item. */
+  optionsJson String   @default("[]")
+
   @@index([category])
   @@index([featured])
 }

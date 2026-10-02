@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { assertSameOrigin, requireAdmin } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { menuItemToDTO } from "@/lib/menu-items"
 import { itemCreateSchema } from "../route"
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -24,6 +25,10 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
     )
   }
 
+  // Serialize the options array to JSON for storage (SQLite has no array type).
+  const { options, ...rest } = parsed.data
+  const optionsJson = JSON.stringify(options)
+
   try {
     const existing = await db.menuItem.findUnique({ where: { id } })
     if (!existing) {
@@ -32,8 +37,11 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
         { status: 404 },
       )
     }
-    const item = await db.menuItem.update({ where: { id }, data: parsed.data })
-    return NextResponse.json({ item })
+    const item = await db.menuItem.update({
+      where: { id },
+      data: { ...rest, optionsJson },
+    })
+    return NextResponse.json({ item: menuItemToDTO(item) })
   } catch (err) {
     console.error("PUT /api/admin/items/[id] failed:", err)
     return NextResponse.json(

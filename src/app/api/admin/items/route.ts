@@ -4,8 +4,27 @@ import { z } from "zod"
 import { assertSameOrigin, requireAdmin } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { CATEGORY_KEYS } from "@/lib/categories"
+import { menuItemToDTO, parseOptionsJson } from "@/lib/menu-items"
 
 const imageRe = /^(?:\/uploads\/[\w.-]+|https:\/\/[\w.-]+(?:\/[^\s]*)?)$/
+
+/** Validation schema for a single option in an option group. */
+const optionSchema = z.object({
+  id: z.string().trim().min(1).max(40),
+  name: z.string().trim().min(1, "نام گزینه الزامی است").max(60),
+  price: z.number().int().min(0).max(100_000).default(0),
+  isDefault: z.boolean().default(false),
+})
+
+/** Validation schema for an option group (e.g. "size" with S/M/L options). */
+const optionGroupSchema = z.object({
+  id: z.string().trim().min(1).max(40),
+  label: z.string().trim().min(1, "عنوان گروه گزینه‌ها الزامی است").max(60),
+  options: z.array(optionSchema).min(1, "هر گروه حداقل یک گزینه باید داشته باشد").max(20),
+})
+
+/** Top-level options array on MenuItem. Empty array = no options. */
+const optionsArraySchema = z.array(optionGroupSchema).max(10).default([])
 
 export const itemCreateSchema = z.object({
   name: z.string().trim().min(1, "نام آیتم الزامی است").max(80, "نام حداکثر ۸۰ کاراکتر است"),
@@ -36,6 +55,8 @@ export const itemCreateSchema = z.object({
   available: z.boolean().default(true),
   featured: z.boolean().default(false),
   sortOrder: z.number().int().min(0).max(10_000).default(0),
+  /** Admin-defined option groups. Validated + serialized to JSON for storage. */
+  options: optionsArraySchema,
 })
 
 /** List ALL items (including unavailable) — admin only. */
@@ -43,9 +64,10 @@ export async function GET(req: NextRequest) {
   const unauthorized = requireAdmin(req)
   if (unauthorized) return unauthorized
 
-  const items = await db.menuItem.findMany({
+  const rows = await db.menuItem.findMany({
     orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
   })
+  const items = rows.map((r) => menuItemToDTO(r))
   return NextResponse.json({ items })
 }
 
@@ -66,9 +88,15 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Serialize the options array to JSON for storage (SQLite has no array type).
+  const { options, ...rest } = parsed.data
+  const optionsJson = JSON.stringify(options)
+
   try {
-    const item = await db.menuItem.create({ data: parsed.data })
-    return NextResponse.json({ item }, { status: 201 })
+    const item = await db.menuItem.create({
+      data: { ...rest, optionsJson },
+    })
+    return NextResponse.json({ item: menuItemToDTO(item) }, { status: 201 })
   } catch (err) {
     console.error("POST /api/admin/items failed:", err)
     return NextResponse.json(

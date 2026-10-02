@@ -11,6 +11,7 @@ import {
   Loader2,
   Package,
   PackageCheck,
+  RefreshCw,
   Search,
   ShoppingCart,
   TriangleAlert,
@@ -78,6 +79,19 @@ function formatDateTime(iso: string): string {
   }
 }
 
+/** Format a Date as a Persian time-only string (e.g. «۱۴:۳۲»). */
+function formatTime(d: Date): string {
+  try {
+    return new Intl.DateTimeFormat("fa-IR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).format(d)
+  } catch {
+    return d.toLocaleTimeString()
+  }
+}
+
 const TONE_CLASSES: Record<string, string> = {
   new: "bg-amber-500/15 text-amber-700 ring-1 ring-amber-500/30 dark:text-amber-300",
   info: "bg-sky-500/15 text-sky-700 ring-1 ring-sky-500/30 dark:text-sky-300",
@@ -106,6 +120,17 @@ export default function TrackOrderPage() {
   const [view, setView] = useState<ViewState>(
     initialCode ? { kind: "loading" } : { kind: "idle" },
   )
+  /** "Last updated" timestamp — shown as a subtle hint + drives the refresh
+   *  button's spin animation. */
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  /** True when a silent background refresh is in flight (no loading state,
+   *  just the refresh button spins). */
+  const [refreshing, setRefreshing] = useState(false)
+  /** Track whether the order has reached a terminal state — we stop polling
+   *  once it's DELIVERED or CANCELLED (no point refreshing a finished order). */
+  const isTerminal =
+    view.kind === "found" &&
+    (view.order.status === "DELIVERED" || view.order.status === "CANCELLED")
 
   const lookup = useCallback(async (raw: string) => {
     const trimmed = raw.trim()
@@ -119,6 +144,7 @@ export default function TrackOrderPage() {
         `/api/orders/track?code=${encodeURIComponent(trimmed)}`,
       )
       setView({ kind: "found", order: data.order })
+      setLastUpdated(new Date())
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 404) {
@@ -137,6 +163,26 @@ export default function TrackOrderPage() {
     }
   }, [])
 
+  /** Silent refresh — re-fetches the current order without flipping to the
+   *  loading state. Used by the auto-poll and the manual refresh button. */
+  const refresh = useCallback(async () => {
+    // Only refresh if we currently have a found order with a code.
+    if (view.kind !== "found") return
+    setRefreshing(true)
+    try {
+      const data = await apiFetch<{ order: Omit<OrderDTO, "customerIp"> }>(
+        `/api/orders/track?code=${encodeURIComponent(view.order.publicCode)}`,
+      )
+      setView({ kind: "found", order: data.order })
+      setLastUpdated(new Date())
+    } catch {
+      // Silent on refresh errors — keep the last-known state. The next
+      // poll will try again.
+    } finally {
+      setRefreshing(false)
+    }
+  }, [view])
+
   // On first mount, if the URL has ?code=LF-XXXXX, run the lookup immediately.
   // We use a ref flag so this only runs once (not on every re-render), and
   // we call `lookup` inside a microtask so setState happens outside the
@@ -151,6 +197,60 @@ export default function TrackOrderPage() {
     // the effect body.
     queueMicrotask(() => void lookup(initialCode))
   }, [initialCode, lookup])
+
+  // Auto-poll every 30s once we have a found order, UNLESS the order is in
+  // a terminal state (DELIVERED / CANCELLED) — no point refreshing a finished
+  // order. Skips when the tab is hidden (Page Visibility API) to save
+  // requests; resumes immediately when visible.
+  useEffect(() => {
+    if (view.kind !== "found" || isTerminal) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const scheduleNext = () => {
+      if (cancelled) return
+      timer = setTimeout(async () => {
+        if (typeof document !== "undefined" && document.hidden) {
+          // Tab hidden — skip this tick, schedule the next.
+          scheduleNext()
+          return
+        }
+        try {
+          const data = await apiFetch<{ order: Omit<OrderDTO, "customerIp"> }>(
+            `/api/orders/track?code=${encodeURIComponent(view.order.publicCode)}`,
+          )
+          if (!cancelled) {
+            setView({ kind: "found", order: data.order })
+            setLastUpdated(new Date())
+          }
+        } catch {
+          // Silent — keep last-known state.
+        }
+        scheduleNext()
+      }, 30_000)
+    }
+
+    const onVisibility = () => {
+      if (!document.hidden && !cancelled) {
+        if (timer) clearTimeout(timer)
+        // Refresh immediately when the tab becomes visible again.
+        void refresh().then(scheduleNext)
+      }
+    }
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", onVisibility)
+    }
+
+    scheduleNext()
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisibility)
+      }
+    }
+  }, [view, isTerminal, refresh])
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -242,7 +342,13 @@ export default function TrackOrderPage() {
           ) : view.kind === "error" ? (
             <ErrorState message={view.message} />
           ) : (
-            <OrderResult order={view.order} />
+            <OrderResult
+              order={view.order}
+              refreshing={refreshing}
+              lastUpdated={lastUpdated}
+              isTerminal={isTerminal}
+              onRefresh={() => void refresh()}
+            />
           )}
         </div>
       </main>
@@ -315,8 +421,16 @@ function ErrorState({ message }: { message: string }) {
 
 function OrderResult({
   order,
+  refreshing,
+  lastUpdated,
+  isTerminal,
+  onRefresh,
 }: {
   order: Omit<OrderDTO, "customerIp">
+  refreshing: boolean
+  lastUpdated: Date | null
+  isTerminal: boolean
+  onRefresh: () => void
 }) {
   const meta = ORDER_STATUS_META[order.status]
   const currentStep = stepIndex(order.status)
@@ -324,10 +438,10 @@ function OrderResult({
 
   return (
     <div className="grid gap-4">
-      {/* Header card: code + status + time */}
+      {/* Header card: code + status + time + refresh */}
       <Card className="gap-3 rounded-2xl p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-muted-foreground">کد سفارش</p>
             <p className="font-mono text-2xl font-extrabold tracking-wider" dir="ltr">
               {order.publicCode}
@@ -336,11 +450,52 @@ function OrderResult({
               ثبت در {formatDateTime(order.createdAt)}
             </p>
           </div>
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold ${TONE_CLASSES[meta.tone]}`}
-          >
-            {meta.label}
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold ${TONE_CLASSES[meta.tone]}`}
+            >
+              {meta.label}
+            </span>
+            {/* Manual refresh button — spins while refreshing. */}
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-9 shrink-0 rounded-full"
+              onClick={onRefresh}
+              disabled={refreshing}
+              aria-label="به‌روزرسانی وضعیت"
+              title="به‌روزرسانی وضعیت"
+            >
+              <RefreshCw
+                className={`size-4 ${refreshing ? "animate-spin" : ""}`}
+                aria-hidden
+              />
+            </Button>
+          </div>
+        </div>
+        {/* Last-updated hint + auto-poll status */}
+        <div className="flex items-center justify-between gap-2 border-t pt-2 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            {isTerminal ? (
+              <>
+                <span className="size-1.5 rounded-full bg-muted-foreground/40" aria-hidden />
+                سفارش نهایی شده — به‌روزرسانی متوقف شد
+              </>
+            ) : (
+              <>
+                <span className="relative flex size-1.5" aria-hidden>
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/60" />
+                  <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+                </span>
+                هر ۳۰ ثانیه به‌روزرسانی خودکار
+              </>
+            )}
           </span>
+          {lastUpdated ? (
+            <span>
+              آخرین به‌روزرسانی: {formatTime(lastUpdated)}
+            </span>
+          ) : null}
         </div>
       </Card>
 
@@ -382,6 +537,11 @@ function OrderResult({
               )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold">{line.name}</p>
+                {line.selectedOptions && line.selectedOptions.length > 0 ? (
+                  <p className="text-[11px] font-medium text-primary/80">
+                    {line.selectedOptions.join("، ")}
+                  </p>
+                ) : null}
                 <p className="text-xs text-muted-foreground">
                   {formatPrice(line.price)} × {faNumber(line.qty)}
                 </p>
