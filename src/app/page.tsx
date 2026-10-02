@@ -16,6 +16,7 @@ import LocationSheet from "@/components/menu/LocationSheet"
 import MenuFooter from "@/components/menu/MenuFooter"
 import MenuSection from "@/components/menu/MenuSection"
 import StickyCategoryNav, { type NavGroup } from "@/components/menu/StickyCategoryNav"
+import type { SortKey } from "@/components/menu/SearchFilters"
 import { ApiError, apiFetch } from "@/lib/api"
 import { CATEGORIES } from "@/lib/categories"
 import { useBasketStore } from "@/lib/basket-store"
@@ -103,6 +104,9 @@ export default function Home() {
   const [locationOpen, setLocationOpen] = useState(false)
   const [isOpenNow, setIsOpenNow] = useState<boolean | null>(null)
   const [detailsItemId, setDetailsItemId] = useState<string | null>(null)
+  // Search filters — owned by the page so they persist across re-renders.
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+  const [sort, setSort] = useState<SortKey>("default")
 
   // Rehydrate the persisted basket after mount (skipHydration: true).
   useEffect(() => {
@@ -157,14 +161,34 @@ export default function Home() {
   )
 
   const searchQuery = query.trim().toLowerCase()
+  // When the user clears the search query, reset the filter/sort too — done
+  // inline (not in an effect) so we don't trigger a cascading re-render.
+  const effectiveCategoryFilter =
+    searchQuery.length === 0 ? null : categoryFilter
+  const effectiveSort: SortKey =
+    searchQuery.length === 0 ? "default" : sort
+
   const searchResults = useMemo<MenuItemDTO[]>(() => {
     if (searchQuery.length === 0) return []
-    return (items ?? []).filter(
+    const matched = (items ?? []).filter(
       (item) =>
         item.name.toLowerCase().includes(searchQuery) ||
         (item.description ?? "").toLowerCase().includes(searchQuery)
     )
-  }, [items, searchQuery])
+    // Apply category filter (null = all categories).
+    const filtered =
+      effectiveCategoryFilter === null
+        ? matched
+        : matched.filter((i) => i.category === effectiveCategoryFilter)
+    // Apply sort (default = preserve original order).
+    if (effectiveSort === "price-asc") {
+      return [...filtered].sort((a, b) => a.price - b.price)
+    }
+    if (effectiveSort === "price-desc") {
+      return [...filtered].sort((a, b) => b.price - a.price)
+    }
+    return filtered
+  }, [items, searchQuery, effectiveCategoryFilter, effectiveSort])
 
   const searchActive = searchQuery.length > 0
 
@@ -233,6 +257,10 @@ export default function Home() {
         searchActive={searchActive}
         resultCount={searchResults.length}
         onOpenBasket={() => setBasketOpen(true)}
+        categoryFilter={effectiveCategoryFilter}
+        onCategoryFilterChange={setCategoryFilter}
+        sort={effectiveSort}
+        onSortChange={setSort}
       />
 
       {/* "پیشنهاد شف" — curated featured items rail (admin-controlled via the

@@ -22,7 +22,7 @@ const ITEMS: {
     description: "نیمرو، پنیر تازه، سبزی معطر، نان سنگک و چای دم‌کرده",
     price: 120,
     category: "breakfast",
-    image: "/uploads/food-breakfast-1.png",
+    image: "/uploads/food-breakfast-1.jpg",
     featured: true,
   },
   {
@@ -30,7 +30,7 @@ const ITEMS: {
     description: "پنکیک حجیم با عسل طبیعی، موز تازه و گردو",
     price: 110,
     category: "breakfast",
-    image: "/uploads/food-breakfast-2.png",
+    image: "/uploads/food-breakfast-2.jpg",
   },
   // Burgers
   {
@@ -38,7 +38,7 @@ const ITEMS: {
     description: "برگر دست‌ساز ۱۵۰ گرمی با پنیر چدار، کاهو، گوجه و سس مخصوص لم",
     price: 200,
     category: "burgers",
-    image: "/uploads/food-burgers-1.png",
+    image: "/uploads/food-burgers-1.jpg",
     featured: true,
   },
   {
@@ -46,7 +46,7 @@ const ITEMS: {
     description: "فیله مرغ گریل‌شده با سس تند مکزیکی و سبزیجات تازه",
     price: 170,
     category: "burgers",
-    image: "/uploads/food-burgers-2.png",
+    image: "/uploads/food-burgers-2.jpg",
   },
   // Pizza
   {
@@ -54,7 +54,7 @@ const ITEMS: {
     description: "خمیر ایتالیایی، پپرونی تند، پنیر موزارلا و سس گوجه خانگی",
     price: 250,
     category: "pizza",
-    image: "/uploads/food-pizza-1.png",
+    image: "/uploads/food-pizza-1.jpg",
     featured: true,
   },
   {
@@ -62,7 +62,7 @@ const ITEMS: {
     description: "مرغ گریل با سس باربیکیو، پیاز کاراملی و فلفل دلمه",
     price: 270,
     category: "pizza",
-    image: "/uploads/food-pizza-2.png",
+    image: "/uploads/food-pizza-2.jpg",
   },
   // Sandwich
   {
@@ -71,14 +71,14 @@ const ITEMS: {
       "سه لایه نان تست با مرغ گریل، پنیر و سبزیجات تازه، همراه سیب‌زمینی",
     price: 190,
     category: "sandwich",
-    image: "/uploads/food-sandwich-1.png",
+    image: "/uploads/food-sandwich-1.jpg",
   },
   {
     name: "ساندویچ فلافل",
     description: "فلافل تازه و ترد با سس ته‌چینه، ترشی و سبزی",
     price: 90,
     category: "sandwich",
-    image: "/uploads/food-sandwich-2.png",
+    image: "/uploads/food-sandwich-2.jpg",
   },
   // Pasta
   {
@@ -86,14 +86,14 @@ const ITEMS: {
     description: "فتوچینی با سس خامه‌ای آلفردو، مرغ گریل و پارمزان",
     price: 210,
     category: "pasta",
-    image: "/uploads/food-pasta-1.png",
+    image: "/uploads/food-pasta-1.jpg",
   },
   {
     name: "پاستا بولونز",
     description: "اسپاگتی با سس گوشت ایتالیایی و ریحان تازه",
     price: 230,
     category: "pasta",
-    image: "/uploads/food-pasta-2.png",
+    image: "/uploads/food-pasta-2.jpg",
   },
   // Dessert
   {
@@ -101,7 +101,7 @@ const ITEMS: {
     description: "کیک شکلاتی گرم با مغز ذوب‌شده و بستنی وانیلی",
     price: 120,
     category: "dessert",
-    image: "/uploads/food-dessert-1.png",
+    image: "/uploads/food-dessert-1.jpg",
     featured: true,
   },
   {
@@ -109,7 +109,7 @@ const ITEMS: {
     description: "چیزکیک کلاسیک کرمی با سس توت‌فرنگی تازه",
     price: 140,
     category: "dessert",
-    image: "/uploads/food-dessert-2.png",
+    image: "/uploads/food-dessert-2.jpg",
   },
   // Coffee
   {
@@ -117,7 +117,7 @@ const ITEMS: {
     description: "اسپرسو دوبل با شیر بخارپز و لاته‌آرت",
     price: 85,
     category: "coffee",
-    image: "/uploads/food-coffee-1.png",
+    image: "/uploads/food-coffee-1.jpg",
     featured: true,
   },
   {
@@ -125,7 +125,7 @@ const ITEMS: {
     description: "اسپرسو سرد با شیر و یخ؛ خنک و مطبوع",
     price: 90,
     category: "coffee",
-    image: "/uploads/food-coffee-2.png",
+    image: "/uploads/food-coffee-2.jpg",
   },
   // Hot drinks (نوشیدنی گرم)
   {
@@ -133,14 +133,14 @@ const ITEMS: {
     description: "شکلات غنی و خامه‌ای با شیر گرم و خامهٔ تازه",
     price: 80,
     category: "hotDrinks",
-    image: "/uploads/food-hotdrinks-1.png",
+    image: "/uploads/food-hotdrinks-1.jpg",
   },
   {
     name: "چای ماسالا",
     description: "چای سیاه با ادویهٔ هندی، شیر و عسل",
     price: 65,
     category: "hotDrinks",
-    image: "/uploads/food-hotdrinks-2.png",
+    image: "/uploads/food-hotdrinks-2.jpg",
   },
   // Cold drinks (نوشیدنی سرد)
   {
@@ -148,14 +148,14 @@ const ITEMS: {
     description: "ته‌چینه سرد با لیمو و یخ، طراوت‌بخش و سبک",
     price: 55,
     category: "coldDrinks",
-    image: "/uploads/food-colddrinks-1.png",
+    image: "/uploads/food-colddrinks-1.jpg",
   },
   {
     name: "لیموناد بلوبری",
     description: "لیموناد تازه با بلوبری و نعنا، خنک و خوش‌رنگ",
     price: 70,
     category: "coldDrinks",
-    image: "/uploads/food-colddrinks-2.png",
+    image: "/uploads/food-colddrinks-2.jpg",
   },
   // Herbal tea (دمنوش)
   {
@@ -163,14 +163,14 @@ const ITEMS: {
     description: "عصارهٔ بهارنارنج با چای سبز، آرام‌بخش و خوش‌بو",
     price: 60,
     category: "herbalTea",
-    image: "/uploads/food-herbaltea-1.png",
+    image: "/uploads/food-herbaltea-1.jpg",
   },
   {
     name: "دمنوش بابونه و چوب‌چین",
     description: "ترکیب آرام‌بخش بابونه و چوب‌چین با عسل طبیعی",
     price: 65,
     category: "herbalTea",
-    image: "/uploads/food-herbaltea-2.png",
+    image: "/uploads/food-herbaltea-2.jpg",
   },
   // Shake (شیک)
   {
@@ -178,7 +178,7 @@ const ITEMS: {
     description: "بستنی وانیلی و شکلات تلخ با شیر و خامه",
     price: 110,
     category: "shake",
-    image: "/uploads/food-shake-1.png",
+    image: "/uploads/food-shake-1.jpg",
     featured: true,
   },
   {
@@ -186,7 +186,7 @@ const ITEMS: {
     description: "توت‌فرنگی تازه با بستنی و شیر، خامه‌ای و خنک",
     price: 115,
     category: "shake",
-    image: "/uploads/food-shake-2.png",
+    image: "/uploads/food-shake-2.jpg",
   },
   // Drinks
   {
@@ -194,14 +194,14 @@ const ITEMS: {
     description: "لیمو تازه، نعنا، سودا و شربت طبیعی",
     price: 75,
     category: "drinks",
-    image: "/uploads/food-drinks-1.png",
+    image: "/uploads/food-drinks-1.jpg",
   },
   {
     name: "لیموناد نعنا",
     description: "لیموناد خانگی با نعنا تازه و یخ فراوان",
     price: 60,
     category: "drinks",
-    image: "/uploads/food-drinks-2.png",
+    image: "/uploads/food-drinks-2.jpg",
   },
 ];
 

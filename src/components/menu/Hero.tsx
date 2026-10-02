@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Bike, ChefHat, Clock, Instagram, MapPin, Phone, UtensilsCrossed } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import ThemeToggle from "@/components/menu/ThemeToggle"
 import type { RestaurantConfig } from "@/lib/types"
 
 const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"]
@@ -33,6 +34,11 @@ export default function Hero({ config, isOpenNow, onOpenLocation }: HeroProps) {
 
   return (
     <header id="top" className="relative isolate overflow-hidden text-white">
+      {/* Mobile-only floating theme toggle (top-left of hero, above the image) */}
+      <div className="absolute left-3 top-3 z-20 sm:hidden">
+        <ThemeToggle />
+      </div>
+
       {hasHeroImage && (
         <img
           src={config.heroImage}
@@ -45,11 +51,17 @@ export default function Hero({ config, isOpenNow, onOpenLocation }: HeroProps) {
         aria-hidden
         className={
           hasHeroImage
-            ? "absolute inset-0 -z-10 bg-gradient-to-b from-primary/95 via-primary/85 to-primary/70"
-            : "absolute inset-0 -z-10 bg-gradient-to-b from-primary via-primary/90 to-primary"
+            ? "absolute inset-0 -z-10 bg-gradient-to-b from-primary/95 via-primary/85 to-primary/75"
+            : "absolute inset-0 -z-10 bg-gradient-to-b from-primary via-primary/90 to-primary/95"
         }
       />
-      {/* Decorative amber blur circles for depth */}
+      {/* Subtle texture grid overlay for depth — barely visible on photo, more
+          noticeable on solid-color hero. Pure CSS so it costs nothing. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.04] [background-image:linear-gradient(rgba(255,255,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.5)_1px,transparent_1px)] [background-size:32px_32px]"
+      />
+      {/* Decorative accent blur circles for depth */}
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-accent/25 blur-3xl"
@@ -117,16 +129,16 @@ export default function Hero({ config, isOpenNow, onOpenLocation }: HeroProps) {
         <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
           <Button
             onClick={scrollToMenu}
-            className="h-12 rounded-full bg-accent px-6 text-base font-bold text-accent-foreground shadow-lg hover:bg-accent/90"
+            className="group h-12 rounded-full bg-accent px-6 text-base font-bold text-accent-foreground shadow-lg shadow-accent/20 transition-all hover:bg-accent/90 hover:shadow-xl hover:shadow-accent/30 active:scale-[0.98]"
           >
-            <UtensilsCrossed className="h-5 w-5" aria-hidden />
+            <UtensilsCrossed className="h-5 w-5 transition-transform group-hover:scale-110" aria-hidden />
             مشاهده منو
           </Button>
           {config.snappfood && (
             <Button
               asChild
               variant="outline"
-              className="h-12 rounded-full border-white/40 bg-white/5 px-6 text-base font-bold text-white hover:bg-white/15 hover:text-white"
+              className="h-12 rounded-full border-white/40 bg-white/5 px-6 text-base font-bold text-white backdrop-blur-sm transition-all hover:bg-white/15 hover:text-white active:scale-[0.98]"
             >
               <a href={config.snappfood} target="_blank" rel="noopener noreferrer">
                 <Bike className="h-5 w-5" aria-hidden />

@@ -22,10 +22,14 @@ const THEME_VAR_KEYS: Record<keyof ThemeColors, string> = {
  * variables, so every Tailwind token (bg-primary, text-foreground, ...) updates
  * instantly across the site.
  *
- * In addition to the 6 user-controlled colors, we derive every other design
- * token (secondary, muted, border, input, ring, card, popover, sidebar, charts,
- * and *all* of their `-foreground` siblings) from the brand palette so the whole
- * UI stays coherent when the admin picks a new primary/accent/background color.
+ * ## Light vs dark mode
+ * The user picks 6 brand colors (primary, accent, background, foreground, ...).
+ * Those represent the *light-mode* brand palette. In dark mode we keep the
+ * user's `primary` and `accent` (so the brand identity is preserved) but
+ * override `background` and `foreground` with our own dark-mode neutrals
+ * (deep teal-tinted dark surface + soft off-white text), and derive everything
+ * else from those — so the page stays readable in both modes without requiring
+ * the admin to pick 12 colors.
  *
  * This is the bug fix for: "admin color setting — few colors don't change".
  * Previously, several tokens (secondary-foreground, muted-foreground,
@@ -36,87 +40,155 @@ const THEME_VAR_KEYS: Record<keyof ThemeColors, string> = {
 export default function ThemeProvider() {
   useEffect(() => {
     let cancelled = false
+    let cachedTheme: ThemeColors | null = null
 
-    fetch("/api/config")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("failed"))))
-      .then((data) => {
-        if (cancelled) return
-        const theme = (data as PublicConfigResponse).restaurant?.theme
-        if (!theme) return
-        applyTheme(theme)
-      })
-      .catch(() => {
-        /* keep whatever theme was last applied (falls back to globals.css) */
-      })
+    const loadAndApply = () => {
+      fetch("/api/config")
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error("failed"))))
+        .then((data) => {
+          if (cancelled) return
+          const theme = (data as PublicConfigResponse).restaurant?.theme
+          if (!theme) return
+          cachedTheme = theme
+          applyTheme(theme)
+        })
+        .catch(() => {
+          /* keep whatever theme was last applied (falls back to globals.css) */
+        })
+    }
+
+    loadAndApply()
+
+    // When the user flips light/dark mode (via ThemeToggle), re-derive the
+    // tokens against the new surface/foreground pair. We can't just read the
+    // CSS variables because the derived tokens (muted-foreground, border, ...)
+    // need to be recomputed from the user's brand palette against the *new*
+    // background, which is what `applyTheme()` does.
+    const onModeChange = () => {
+      if (cachedTheme) applyTheme(cachedTheme)
+    }
+    window.addEventListener("lamfood:theme-mode-change", onModeChange)
 
     return () => {
       cancelled = true
+      window.removeEventListener("lamfood:theme-mode-change", onModeChange)
     }
   }, [])
 
   return null
 }
 
+/** Whether the document is currently in dark mode (has the `.dark` class). */
+function isDarkMode(): boolean {
+  if (typeof document === "undefined") return false
+  return document.documentElement.classList.contains("dark")
+}
+
+/** Re-apply the brand theme. Call this when the dark/light mode changes so the
+ *  derived tokens recompute against the right surface/foreground pair. */
+export function reapplyTheme(theme: ThemeColors) {
+  applyTheme(theme)
+}
+
 export function applyTheme(theme: ThemeColors) {
   const root = document.documentElement
+  const dark = isDarkMode()
 
-  // 1) Apply the 6 user-controlled tokens directly.
-  for (const key of Object.keys(THEME_VAR_KEYS) as (keyof ThemeColors)[]) {
-    root.style.setProperty(THEME_VAR_KEYS[key], theme[key])
-  }
+  // In dark mode we override the user's background/foreground with dark-mode
+  // neutrals — but keep their primary/accent so the brand identity is intact.
+  const bg = dark ? DARK.background : theme.background
+  const fg = dark ? DARK.foreground : theme.foreground
+  const card = dark ? DARK.card : bg
+  const popover = dark ? DARK.popover : bg
+  const primary = theme.primary
+  const primaryFg = theme.primaryForeground
+  const accent = theme.accent
+  const accentFg = theme.accentForeground
+
+  // 1) Apply the 6 (or dark-overridden) user-controlled tokens directly.
+  root.style.setProperty("--primary", primary)
+  root.style.setProperty("--primary-foreground", primaryFg)
+  root.style.setProperty("--accent", accent)
+  root.style.setProperty("--accent-foreground", accentFg)
+  root.style.setProperty("--background", bg)
+  root.style.setProperty("--foreground", fg)
 
   // 2) Derived surface tokens — keep the page readable without forcing the
-  //    admin to pick every single variable. These blend the brand color onto
-  //    the background at small alpha values so muted/secondary/border track the
-  //    chosen palette instead of staying frozen at the default teal.
-  root.style.setProperty("--secondary", colorMix(theme.primary, theme.background, 0.08))
-  root.style.setProperty("--secondary-foreground", mixToHex(theme.primary, theme.foreground, 0.7))
-  root.style.setProperty("--muted", colorMix(theme.primary, theme.background, 0.05))
-  // muted-foreground weight bumped 0.55 → 0.72 to clear WCAG AA contrast
-  // (≥4.5:1) against the background, so item descriptions stay readable
-  // even on light pastel palettes.
+  //    admin to pick every single variable. In light mode we blend the brand
+  //    color onto the background at small alpha values; in dark mode we use
+  //    white-overlaid surfaces (so muted/secondary track the dark surface).
+  const surfaceMix = dark
+    ? (base: string, alpha: number) => `color-mix(in srgb, ${base} ${alpha}%, ${bg})`
+    : (base: string, alpha: number) => `color-mix(in srgb, ${base} ${alpha}%, ${bg})`
+
+  root.style.setProperty("--secondary", surfaceMix(primary, 14))
+  root.style.setProperty("--secondary-foreground", mixToHex(primary, fg, 0.75))
+  root.style.setProperty("--muted", surfaceMix(primary, 8))
+  // muted-foreground: in dark mode use a lighter mix (foreground→bg, 0.7);
+  // in light mode use the heavier weight from round 2 (0.72) for WCAG AA.
   root.style.setProperty(
     "--muted-foreground",
-    mixToHex(theme.foreground, theme.background, 0.72),
+    dark ? mixToHex(fg, bg, 0.7) : mixToHex(fg, bg, 0.72),
   )
-  root.style.setProperty("--border", colorMix(theme.primary, theme.background, 0.18))
-  root.style.setProperty("--input", colorMix(theme.primary, theme.background, 0.25))
-  root.style.setProperty("--ring", theme.primary)
+  // Borders are subtle white overlays in dark mode; brand-tinted in light mode.
+  root.style.setProperty(
+    "--border",
+    dark ? "rgba(255, 255, 255, 0.12)" : surfaceMix(primary, 18),
+  )
+  root.style.setProperty(
+    "--input",
+    dark ? "rgba(255, 255, 255, 0.16)" : surfaceMix(primary, 25),
+  )
+  root.style.setProperty("--ring", primary)
 
   // 3) Card / popover surfaces follow the background, and their foreground
   //    follows the body foreground — so they update when the admin picks a
   //    new background or foreground color.
-  root.style.setProperty("--card", theme.background)
-  root.style.setProperty("--card-foreground", theme.foreground)
-  root.style.setProperty("--popover", theme.background)
-  root.style.setProperty("--popover-foreground", theme.foreground)
+  root.style.setProperty("--card", card)
+  root.style.setProperty("--card-foreground", fg)
+  root.style.setProperty("--popover", popover)
+  root.style.setProperty("--popover-foreground", fg)
 
   // 4) Sidebar tokens — keep the admin sidebar in sync with the brand palette.
-  root.style.setProperty("--sidebar", theme.background)
-  root.style.setProperty("--sidebar-foreground", theme.foreground)
-  root.style.setProperty("--sidebar-primary", theme.primary)
-  root.style.setProperty("--sidebar-primary-foreground", theme.primaryForeground)
-  root.style.setProperty("--sidebar-accent", colorMix(theme.primary, theme.background, 0.08))
+  root.style.setProperty("--sidebar", card)
+  root.style.setProperty("--sidebar-foreground", fg)
+  root.style.setProperty("--sidebar-primary", primary)
+  root.style.setProperty("--sidebar-primary-foreground", primaryFg)
+  root.style.setProperty("--sidebar-accent", surfaceMix(primary, 14))
   root.style.setProperty(
     "--sidebar-accent-foreground",
-    mixToHex(theme.primary, theme.foreground, 0.55),
+    mixToHex(primary, fg, 0.7),
   )
-  root.style.setProperty("--sidebar-border", colorMix(theme.primary, theme.background, 0.18))
-  root.style.setProperty("--sidebar-ring", theme.primary)
+  root.style.setProperty(
+    "--sidebar-border",
+    dark ? "rgba(255, 255, 255, 0.12)" : surfaceMix(primary, 18),
+  )
+  root.style.setProperty("--sidebar-ring", primary)
 
   // 5) Chart palette — derive 5 chart colors from the brand primary/accent.
-  //    Charts aren't shown on the public menu but admin pages may use them;
-  //    keeping them on-brand avoids the "default teal chart" surprise.
-  root.style.setProperty("--chart-1", theme.primary)
-  root.style.setProperty("--chart-2", theme.accent)
-  root.style.setProperty("--chart-3", colorMix(theme.primary, theme.background, 0.4))
-  root.style.setProperty("--chart-4", colorMix(theme.accent, theme.background, 0.45))
-  root.style.setProperty("--chart-5", mixToHex(theme.primary, theme.foreground, 0.35))
+  root.style.setProperty("--chart-1", primary)
+  root.style.setProperty("--chart-2", accent)
+  root.style.setProperty("--chart-3", surfaceMix(primary, 40))
+  root.style.setProperty("--chart-4", surfaceMix(accent, 45))
+  root.style.setProperty("--chart-5", mixToHex(primary, fg, 0.4))
 
   // 6) Update the browser UI / theme-color meta as well.
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute("content", theme.primary)
+  if (meta) meta.setAttribute("content", dark ? bg : primary)
 }
+
+/**
+ * Dark-mode neutrals — a deep teal-tinted surface and a soft off-white text.
+ * These are intentionally NOT user-configurable (so the admin only has to pick
+ * 6 colors, not 12); they pair well with the default LamFood teal brand but
+ * also work with any primary/accent the admin picks.
+ */
+const DARK = {
+  background: "#0b1f23",
+  foreground: "#e8eef0",
+  card: "#102a30",
+  popover: "#102a30",
+} as const
 
 /** Mix two hex colors by alpha in sRGB (CSS color-mix). Returns a CSS color. */
 function colorMix(base: string, onto: string, alpha: number): string {

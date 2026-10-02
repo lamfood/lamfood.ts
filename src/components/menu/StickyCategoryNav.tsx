@@ -6,6 +6,8 @@ import { Search, ShoppingBasket, X, type LucideIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import SearchFilters, { type SortKey } from "@/components/menu/SearchFilters"
+import ThemeToggle from "@/components/menu/ThemeToggle"
 import { faNumber } from "@/lib/format"
 import { basketCount, useBasketStore } from "@/lib/basket-store"
 
@@ -25,6 +27,12 @@ interface StickyCategoryNavProps {
   searchActive: boolean
   resultCount: number
   onOpenBasket: () => void
+  /** Currently selected category filter (null = all). */
+  categoryFilter: string | null
+  onCategoryFilterChange: (key: string | null) => void
+  /** Currently selected sort key. */
+  sort: SortKey
+  onSortChange: (sort: SortKey) => void
 }
 
 export default function StickyCategoryNav({
@@ -36,6 +44,10 @@ export default function StickyCategoryNav({
   searchActive,
   resultCount,
   onOpenBasket,
+  categoryFilter,
+  onCategoryFilterChange,
+  sort,
+  onSortChange,
 }: StickyCategoryNavProps) {
   const [observed, setObserved] = useState<string>(groups[0]?.key ?? "")
   const count = useBasketStore((state) => basketCount(state.lines))
@@ -133,6 +145,8 @@ export default function StickyCategoryNav({
               </Badge>
             )}
           </Button>
+
+          <ThemeToggle className="hidden sm:inline-flex" />
         </div>
 
         <AnimatePresence initial={false}>
@@ -175,6 +189,14 @@ export default function StickyCategoryNav({
                   </p>
                 )}
               </div>
+              {/* Category + sort filters — only meaningful once a query is active. */}
+              <SearchFilters
+                active={searchActive}
+                categoryFilter={categoryFilter}
+                onCategoryFilterChange={onCategoryFilterChange}
+                sort={sort}
+                onSortChange={onSortChange}
+              />
             </motion.div>
           )}
         </AnimatePresence>

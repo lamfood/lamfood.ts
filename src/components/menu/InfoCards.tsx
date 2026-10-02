@@ -31,7 +31,7 @@ function OpenBadge({ isOpen }: { isOpen: boolean }) {
 
 function CardIcon({ icon: Icon }: { icon: typeof Clock }) {
   return (
-    <div className="w-fit rounded-xl bg-primary/10 p-2.5 text-primary">
+    <div className="w-fit rounded-xl bg-primary/10 p-2.5 text-primary ring-1 ring-primary/15">
       <Icon className="h-5 w-5" aria-hidden />
     </div>
   );
@@ -60,7 +60,7 @@ export default function InfoCards({
       </h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* ساعات کاری */}
-        <Card className="gap-3 p-5">
+        <Card className="gap-3 p-5 transition-all hover:-translate-y-0.5 hover:shadow-md">
           <CardIcon icon={Clock} />
           <h3 className="font-bold">ساعت کاری</h3>
           <p className="text-sm leading-6 text-muted-foreground">
@@ -71,7 +71,7 @@ export default function InfoCards({
 
         {/* تلفن */}
         {config.phone && (
-          <Card className="gap-3 p-5">
+          <Card className="gap-3 p-5 transition-all hover:-translate-y-0.5 hover:shadow-md">
             <CardIcon icon={Phone} />
             <h3 className="font-bold">تلفن</h3>
             <p className="text-sm text-muted-foreground">
@@ -92,7 +92,7 @@ export default function InfoCards({
 
         {/* آدرس */}
         {config.address && (
-          <Card className="gap-3 p-5">
+          <Card className="gap-3 p-5 transition-all hover:-translate-y-0.5 hover:shadow-md">
             <CardIcon icon={MapPin} />
             <h3 className="font-bold">آدرس</h3>
             <p className="text-sm leading-6 text-muted-foreground">
@@ -111,7 +111,7 @@ export default function InfoCards({
 
         {/* اینستاگرام */}
         {config.instagram && (
-          <Card className="gap-3 p-5">
+          <Card className="gap-3 p-5 transition-all hover:-translate-y-0.5 hover:shadow-md">
             <CardIcon icon={Instagram} />
             <h3 className="font-bold">اینستاگرام</h3>
             <p className="text-sm text-muted-foreground">
@@ -136,7 +136,7 @@ export default function InfoCards({
 
         {/* اسنپ‌فود */}
         {config.snappfood && (
-          <Card className="gap-3 p-5">
+          <Card className="gap-3 p-5 transition-all hover:-translate-y-0.5 hover:shadow-md">
             <CardIcon icon={Bike} />
             <h3 className="font-bold">اسنپ‌فود</h3>
             <p className="text-sm text-muted-foreground">
