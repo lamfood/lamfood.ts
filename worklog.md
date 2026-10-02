@@ -123,3 +123,127 @@ Stage Summary:
 - ✅ webDevReview cron job created (every 15 min).
 - Dev server running on port 3000; the user can preview via the right-hand
   Preview Panel ("Open in New Tab" available).
+
+---
+Task ID: 2
+Agent: main (webDevReview — cron-triggered round 1)
+Task: QA the current state via agent-browser, fix any bugs found, then add
+new features and styling polish. Mandatory: improve styling with more
+details and add more features/functionality.
+
+## Current project status (assessment at start of round)
+- Dev server was already running on port 3000 (daemon started in round 1).
+- All 4 user-requested tasks from round 1 were complete and pushed (commit
+  `77fe475`): 12 categories, theme-tokens bug fix, CategoryGrid, clean git.
+- 24 menu items seeded; /admin login works (admin/admin123).
+- No build/runtime errors in dev.log.
+
+## QA findings (via agent-browser + VLM)
+- ✅ Working: 12 categories in sticky nav + grid, search (hides grid), basket
+  (correct math: 200+170+85 = 455), admin login, items manager (24 items),
+  settings/color picker, mobile (2-col grid).
+- ⚠️ Issues found:
+  1. **Accessibility regression**: `--muted-foreground` was `#8c8374` on
+     `#E8EEF2` background → contrast ratio only **3.2:1**, failing WCAG AA
+     (≥4.5:1 required). Affected item descriptions, search hint, badges.
+  2. **Sticky nav active state** relied on color only (no ring/shadow), hard
+     to distinguish on colorblind or low-contrast screens.
+  3. **Featured cards had inconsistent heights** in the rail (descriptions of
+     varying length → jagged bottom edge). [Detected after first iteration.]
+  4. VLM noted general polish gaps (touch-target affordance, FAB clearance).
+     Not blockers; addressed where cheap.
+
+## Goals / completed modifications / verification
+
+### Bug fixes
+- **muted-foreground WCAG AA**: bumped mixToHex weight 0.55 → 0.72 in
+  `ThemeProvider.applyTheme()`. Verified: new color `#6f624d` on `#E8EEF2` =
+  **5.08:1** (PASS). Item descriptions are now comfortably readable.
+- **Sticky nav active state**: chip now uses `shadow-md + ring-2 ring-primary/30
+  + small accent dot` for active, and `ring-1 ring-transparent + hover:ring-border`
+  for inactive — multi-cue differentiation (not color-only).
+
+### New features (mandatory)
+1. **`featured` schema column + admin curation**:
+   - `prisma/schema.prisma`: added `featured Boolean @default(false)` +
+     `@@index([featured])`.
+   - `scripts/seed.ts`: marked 6 items as `featured: true` (one per main
+     category — صبحانه ایرانی، چیزبرگر مخصوص لم، پیتزا پپرونی، لاته،
+     میلک‌شیک شکلاتی، کیک شکلاتی مذاب).
+   - `src/lib/types.ts` + `src/app/api/admin/items/route.ts`: expose
+     `featured` on `MenuItemDTO` and the create/update zod schema.
+   - `src/components/admin/ItemsManager.tsx`: per-item "پیشنهاد شف" switch
+     (calls the same PUT endpoint, preserves every other field so toggling
+     one flag doesn't wipe the other — verified round-trip 6→5→6).
+   - `src/components/admin/ItemForm.tsx`: "پیشنهاد شف" Switch in a 2-col
+     row alongside "نمایش در منو".
+2. **FeaturedSection** (`src/components/menu/FeaturedSection.tsx`):
+   horizontally-scrolling "پیشنهاد شف" rail above the categories grid. Cards
+   stretch to equal heights (verified 381.5px each), accent ribbon, click image
+   or title to open details, inline add-to-basket stepper. Hidden while searching.
+3. **ItemDetailsDialog** (`src/components/menu/ItemDetailsDialog.tsx`):
+   full-screen-friendly Radix Dialog. 16:9 preview image, full description
+   (no line-clamp), category badge, large price block, large qty stepper,
+   "this item in your basket" summary when qty > 0. Closes via Escape/backdrop/X.
+   `key={item.id}` forces remount so image/scroll state doesn't leak.
+4. **ItemCard clickable** (`src/components/menu/MenuSection.tsx`): image and
+   title now `<button>` elements that open the details dialog. Hover hint
+   "مشاهدهٔ جزئیات" overlays the image. Featured items get the "پیشنهاد شف"
+   ribbon on the regular menu card too. Same wiring applied to search results.
+5. **BackToTop** (`src/components/menu/BackToTop.tsx`): floating bottom-right
+   button, appears after scrolling past ~90% of viewport. Smooth-scrolls to
+   top. Stays clear of FloatingBasket (which is bottom-center on mobile,
+   bottom-left on desktop).
+
+### Styling polish (mandatory)
+- All featured cards equal height (items-stretch + flex-col + h-full).
+- ItemCard hover: `-translate-y-0.5 + shadow-xl` for a subtle lift.
+- Section headings: added `scroll-mt-24` so anchor jumps (`#cat-*`) don't hide
+  the heading behind the sticky nav.
+- Featured card "پیشنهاد شف" ribbon: always-visible, accent-colored, with
+  Sparkles icon — works regardless of image content.
+- Sticky nav: active chip now multi-cue (color + shadow + ring + dot).
+
+### Verification
+- Lint: `bun run lint` → 0 errors.
+- Endpoints: `GET /` 200, `GET /admin` 200, `GET /api/menu` 200 (returns 24
+  items, 6 with `featured: true`).
+- agent-browser:
+  * Home: featured section renders 6 cards; clicking featured image opens
+    details dialog; add-to-basket inside dialog works (basket badge 3→4).
+  * Item card click (regular menu + search results) opens details dialog.
+  * Escape closes dialog.
+  * Admin ItemsManager: each item shows BOTH "فعال در منو" and "پیشنهاد شف"
+    switches; toggle round-trips 6→5→6 in /api/menu.
+  * ItemForm: shows the new "پیشنهاد شف" Switch.
+  * Back-to-top button appears after scrolling, hidden at top.
+  * Mobile (375×800): featured rail is horizontally scrollable with snap.
+  * No console errors, no page errors.
+
+## Commit & push
+- Commit `1093f98 feat(menu): add featured items, item details dialog,
+  back-to-top; polish styling` (13 files, +734 / -61).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+## Unresolved issues / risks & next-phase recommendations
+1. **WhatsApp checkout is still a "build-the-URL and open wa.me" pattern**
+   — no order tracking, no order ID, no server-side persistence. If the user
+   wants a real ordering flow, the next round could add an `Order` model and
+   a tiny order-submit API, then have the admin panel show recent orders.
+2. **No analytics / popularity data** — the "featured" flag is admin-curated.
+   A future round could add a per-item view/add counter and surface
+   "محبوب‌ترین‌ها" automatically.
+3. **No item options/addons** — e.g. burger size, extra cheese, spiciness.
+   Would need a related `ItemOption` model and a more complex basket line.
+4. **No dark-mode toggle on the public menu** — `globals.css` already has
+   `.dark` variants but the menu never toggles them. Adding a
+   `next-themes` toggle + sun/moon button in the sticky nav would be cheap.
+5. **ItemForm image upload** requires the user to pick a file or paste a URL;
+   there's no image-pick-from-existing-uploads flow. A media library browser
+   would be a nice touch.
+6. **Search is name/description only** — could add category filtering and
+   sorting (price asc/desc, popularity).
+
+Recommended priority for the next 15-min round: pick #4 (dark mode toggle) or
+#6 (search filters) — both are scoped, user-visible, and don't require schema
+migrations.
