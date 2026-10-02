@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { CheckCircle2, Loader2, MessageCircle, Minus, Plus, ShoppingBasket, Trash2, UtensilsCrossed } from "lucide-react"
+import { CheckCircle2, Loader2, MessageCircle, Minus, Package, Plus, ShoppingBasket, Trash2, UtensilsCrossed } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -266,11 +266,21 @@ export default function BasketSheet({ open, onOpenChange, config }: BasketSheetP
               </Button>
 
               {lastOrderCode ? (
-                <div className="flex items-center justify-center gap-2 rounded-xl bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
-                  <CheckCircle2 className="size-4" aria-hidden />
-                  <span>
-                    کد سفارش: <span className="font-extrabold tracking-wider" dir="ltr">{lastOrderCode}</span>
-                  </span>
+                <div className="flex flex-col gap-2 rounded-xl bg-emerald-500/10 px-3 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+                  <div className="flex items-center justify-center gap-2">
+                    <CheckCircle2 className="size-4" aria-hidden />
+                    <span>
+                      کد سفارش: <span className="font-extrabold tracking-wider" dir="ltr">{lastOrderCode}</span>
+                    </span>
+                  </div>
+                  <a
+                    href={`/track?code=${encodeURIComponent(lastOrderCode)}`}
+                    className="flex items-center justify-center gap-1 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-500/25 dark:text-emerald-300"
+                    aria-label={`پیگیری سفارش ${lastOrderCode}`}
+                  >
+                    <Package className="size-3.5" aria-hidden />
+                    پیگیری وضعیت سفارش
+                  </a>
                 </div>
               ) : null}
 

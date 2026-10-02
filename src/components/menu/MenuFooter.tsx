@@ -1,6 +1,6 @@
 "use client";
 
-import { ChefHat } from "lucide-react";
+import { ChefHat, PackageSearch } from "lucide-react";
 import { faNumber } from "@/lib/format";
 import type { RestaurantConfig } from "@/lib/types";
 
@@ -62,6 +62,13 @@ export default function MenuFooter({ config, className }: MenuFooterProps) {
             >
               مشاهده منو
             </button>
+            <a
+              href="/track"
+              className="flex items-center gap-1.5 text-white/80 transition hover:text-accent"
+            >
+              <PackageSearch className="size-3.5" aria-hidden />
+              پیگیری سفارش
+            </a>
             {config.instagram && (
               <a
                 href={config.instagram}

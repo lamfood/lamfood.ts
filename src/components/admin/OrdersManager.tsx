@@ -62,6 +62,16 @@ const TONE_CLASSES: Record<
   bad: "bg-destructive/15 text-destructive ring-1 ring-destructive/30",
 }
 
+/** Solid stripe color for the order card's right edge (status accent). */
+const TONE_STRIPE: Record<"new" | "info" | "warn" | "good" | "done" | "bad", string> = {
+  new: "bg-amber-500",
+  info: "bg-sky-500",
+  warn: "bg-orange-500",
+  good: "bg-emerald-500",
+  done: "bg-primary",
+  bad: "bg-destructive",
+}
+
 function StatusBadge({ status }: { status: OrderStatus }) {
   const meta = ORDER_STATUS_META[status]
   return (
@@ -360,7 +370,12 @@ function OrderCard({
 }) {
   const itemCount = order.lines.reduce((sum, l) => sum + l.qty, 0)
   return (
-    <Card className="group gap-3 rounded-2xl py-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
+    <Card className="group relative gap-3 overflow-hidden rounded-2xl py-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
+      {/* Left status accent stripe (color-coded by current status tone) */}
+      <span
+        aria-hidden
+        className={`absolute inset-y-0 right-0 w-1.5 ${TONE_STRIPE[ORDER_STATUS_META[order.status].tone]}`}
+      />
       <CardContent className="grid gap-3 px-4">
         {/* Header: code + status + time */}
         <div className="flex items-start justify-between gap-2">
@@ -387,14 +402,17 @@ function OrderCard({
           </p>
         </div>
 
-        {/* Footer: total + count + view button */}
+        {/* Footer: total (prominent) + count + view button */}
         <div className="flex items-center justify-between gap-2 border-t pt-2">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="font-extrabold">{formatPrice(order.total)}</span>
-            <Badge variant="secondary" className="px-2 py-0 text-[10px]">
-              {faNumber(itemCount)} آیتم
-            </Badge>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-medium text-muted-foreground">مجموع</span>
+            <span className="text-base font-extrabold text-foreground">
+              {formatPrice(order.total)}
+            </span>
           </div>
+          <Badge variant="secondary" className="px-2 py-0 text-[10px]">
+            {faNumber(itemCount)} آیتم
+          </Badge>
           <Button
             variant="ghost"
             size="sm"

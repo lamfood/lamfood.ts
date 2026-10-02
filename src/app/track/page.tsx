@@ -1,0 +1,488 @@
+"use client"
+
+import { useCallback, useEffect, useRef, useState } from "react"
+import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+import {
+  ArrowRight,
+  CheckCircle2,
+  ChefHat,
+  Clock,
+  Loader2,
+  Package,
+  PackageCheck,
+  Search,
+  ShoppingCart,
+  TriangleAlert,
+  X,
+  XCircle,
+} from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { ApiError, apiFetch } from "@/lib/api"
+import { faNumber, formatPrice } from "@/lib/format"
+import {
+  ORDER_STATUS_META,
+  type OrderDTO,
+  type OrderStatus,
+} from "@/lib/types"
+
+/* ------------------------------------------------------------------ */
+/* Status timeline                                                     */
+/* ------------------------------------------------------------------ */
+
+interface TimelineStep {
+  status: OrderStatus
+  icon: LucideIcon
+  /** Persian label (uses the shared ORDER_STATUS_META). */
+  label: string
+}
+
+/** Ordered lifecycle steps for the timeline UI. CANCELLED is shown as a
+ *  separate terminal state (not a step in the timeline). */
+const TIMELINE_STEPS: TimelineStep[] = [
+  { status: "NEW", icon: Package, label: ORDER_STATUS_META.NEW.label },
+  { status: "SEEN", icon: Clock, label: ORDER_STATUS_META.SEEN.label },
+  { status: "PREPARING", icon: ChefHat, label: ORDER_STATUS_META.PREPARING.label },
+  { status: "READY", icon: PackageCheck, label: ORDER_STATUS_META.READY.label },
+  { status: "DELIVERED", icon: CheckCircle2, label: ORDER_STATUS_META.DELIVERED.label },
+]
+
+/** Find the index of the current status in the timeline. Returns -1 for
+ *  CANCELLED (terminal) so the timeline renders fully greyed-out. */
+function stepIndex(status: OrderStatus): number {
+  if (status === "CANCELLED") return -1
+  return TIMELINE_STEPS.findIndex((s) => s.status === status)
+}
+
+/* ------------------------------------------------------------------ */
+/* Helpers                                                             */
+/* ------------------------------------------------------------------ */
+
+/** Format an ISO string as a short Persian date+time (e.g. «۱۴۰۳/۰۷/۱۱ ۱۴:۳۲»). */
+function formatDateTime(iso: string): string {
+  try {
+    const d = new Date(iso)
+    return new Intl.DateTimeFormat("fa-IR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(d)
+  } catch {
+    return iso
+  }
+}
+
+const TONE_CLASSES: Record<string, string> = {
+  new: "bg-amber-500/15 text-amber-700 ring-1 ring-amber-500/30 dark:text-amber-300",
+  info: "bg-sky-500/15 text-sky-700 ring-1 ring-sky-500/30 dark:text-sky-300",
+  warn: "bg-orange-500/15 text-orange-700 ring-1 ring-orange-500/30 dark:text-orange-300",
+  good: "bg-emerald-500/15 text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-300",
+  done: "bg-primary/15 text-primary ring-1 ring-primary/30",
+  bad: "bg-destructive/15 text-destructive ring-1 ring-destructive/30",
+}
+
+/* ------------------------------------------------------------------ */
+/* Main component                                                      */
+/* ------------------------------------------------------------------ */
+
+type ViewState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "not_found" }
+  | { kind: "error"; message: string }
+  | { kind: "found"; order: Omit<OrderDTO, "customerIp"> }
+
+export default function TrackOrderPage() {
+  const searchParams = useSearchParams()
+  const initialCode = (searchParams.get("code") ?? "").trim().toUpperCase()
+
+  const [code, setCode] = useState(initialCode)
+  const [view, setView] = useState<ViewState>(
+    initialCode ? { kind: "loading" } : { kind: "idle" },
+  )
+
+  const lookup = useCallback(async (raw: string) => {
+    const trimmed = raw.trim()
+    if (trimmed.length === 0) {
+      setView({ kind: "idle" })
+      return
+    }
+    setView({ kind: "loading" })
+    try {
+      const data = await apiFetch<{ order: Omit<OrderDTO, "customerIp"> }>(
+        `/api/orders/track?code=${encodeURIComponent(trimmed)}`,
+      )
+      setView({ kind: "found", order: data.order })
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 404) {
+          setView({ kind: "not_found" })
+          return
+        }
+        if (err.status === 400) {
+          setView({ kind: "error", message: err.message })
+          return
+        }
+      }
+      setView({
+        kind: "error",
+        message: err instanceof Error ? err.message : "خطای غیرمنتظره‌ای رخ داد.",
+      })
+    }
+  }, [])
+
+  // On first mount, if the URL has ?code=LF-XXXXX, run the lookup immediately.
+  // We use a ref flag so this only runs once (not on every re-render), and
+  // we call `lookup` inside a microtask so setState happens outside the
+  // effect's synchronous body (keeps the `react-hooks/set-state-in-effect`
+  // lint rule happy).
+  const didInitialLookupRef = useRef(false)
+  useEffect(() => {
+    if (didInitialLookupRef.current) return
+    if (initialCode.length === 0) return
+    didInitialLookupRef.current = true
+    // Defer to a microtask so we're not calling setState synchronously in
+    // the effect body.
+    queueMicrotask(() => void lookup(initialCode))
+  }, [initialCode, lookup])
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    void lookup(code)
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col bg-background">
+      {/* Sticky top bar — back to menu + page title */}
+      <header className="sticky top-0 z-30 border-b bg-background/85 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-3xl items-center justify-between gap-2 px-4 sm:px-6">
+          <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="icon" className="size-10 rounded-full" aria-label="بازگشت به منو">
+              <Link href="/">
+                <X className="size-5" aria-hidden />
+              </Link>
+            </Button>
+            <h1 className="text-base font-extrabold sm:text-lg">پیگیری سفارش</h1>
+          </div>
+          <Button asChild variant="ghost" className="h-10 gap-1 text-sm">
+            <Link href="/">
+              <ArrowRight className="size-4" aria-hidden />
+              <span className="hidden sm:inline">بازگشت به منو</span>
+            </Link>
+          </Button>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6">
+        {/* Search form */}
+        <Card className="gap-4 rounded-2xl p-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Search className="size-5" aria-hidden />
+            </div>
+            <div>
+              <h2 className="text-lg font-extrabold">کد سفارش خود را وارد کنید</h2>
+              <p className="text-sm text-muted-foreground">
+                کد سفارش (مثل <span className="font-mono font-bold" dir="ltr">LF-7K3X9</span>) را در زمان ثبت سفارش دریافت کرده‌اید.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="grid flex-1 gap-2">
+              <label htmlFor="track-code" className="text-sm font-medium">
+                کد سفارش
+              </label>
+              <Input
+                id="track-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="LF-XXXXX"
+                dir="ltr"
+                className="h-12 text-left font-mono text-base font-bold uppercase tracking-wider"
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={20}
+              />
+            </div>
+            <Button
+              type="submit"
+              className="h-12 gap-2 rounded-xl px-6 text-base font-bold sm:w-auto"
+              disabled={view.kind === "loading" || code.trim().length === 0}
+            >
+              {view.kind === "loading" ? (
+                <>
+                  <Loader2 className="size-5 animate-spin" aria-hidden />
+                  در حال جستجو…
+                </>
+              ) : (
+                <>
+                  <Search className="size-5" aria-hidden />
+                  پیگیری
+                </>
+              )}
+            </Button>
+          </form>
+        </Card>
+
+        {/* Result */}
+        <div className="mt-4">
+          {view.kind === "idle" ? (
+            <IdleHint />
+          ) : view.kind === "loading" ? (
+            <LoadingState />
+          ) : view.kind === "not_found" ? (
+            <NotFoundState code={code} onRetry={() => setCode("")} />
+          ) : view.kind === "error" ? (
+            <ErrorState message={view.message} />
+          ) : (
+            <OrderResult order={view.order} />
+          )}
+        </div>
+      </main>
+
+      <footer className="mt-auto border-t bg-muted/30">
+        <div className="mx-auto w-full max-w-3xl px-4 py-4 text-center text-xs text-muted-foreground sm:px-6">
+          © {faNumber(new Date().getFullYear())} لم‌فود — پیگیری سفارش
+        </div>
+      </footer>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Sub-views                                                           */
+/* ------------------------------------------------------------------ */
+
+function IdleHint() {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed p-8 text-center">
+      <Package className="size-12 text-muted-foreground/40" aria-hidden />
+      <p className="font-medium text-muted-foreground">
+        برای پیگیری سفارش، کد آن را در بالا وارد کنید.
+      </p>
+    </div>
+  )
+}
+
+function LoadingState() {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border p-8 text-center" aria-live="polite">
+      <Loader2 className="size-10 animate-spin text-primary" aria-hidden />
+      <p className="text-sm text-muted-foreground">در حال جستجوی سفارش…</p>
+    </div>
+  )
+}
+
+function NotFoundState({ code, onRetry }: { code: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed p-8 text-center">
+      <div className="rounded-full bg-destructive/10 p-4">
+        <TriangleAlert className="size-8 text-destructive" aria-hidden />
+      </div>
+      <div>
+        <p className="text-lg font-bold">سفارشی یافت نشد</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          سفاری با کد <span className="font-mono font-bold" dir="ltr">{code}</span> پیدا نشد.
+          <br />
+          کد را بررسی کنید و دوباره امتحان کنید.
+        </p>
+      </div>
+      <Button variant="outline" onClick={onRetry} className="h-11 rounded-full px-6">
+        پاک کردن و تلاش مجدد
+      </Button>
+    </div>
+  )
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-destructive/40 p-8 text-center">
+      <div className="rounded-full bg-destructive/10 p-4">
+        <TriangleAlert className="size-8 text-destructive" aria-hidden />
+      </div>
+      <p className="text-lg font-bold">خطا</p>
+      <p className="max-w-sm text-sm text-muted-foreground">{message}</p>
+    </div>
+  )
+}
+
+function OrderResult({
+  order,
+}: {
+  order: Omit<OrderDTO, "customerIp">
+}) {
+  const meta = ORDER_STATUS_META[order.status]
+  const currentStep = stepIndex(order.status)
+  const isCancelled = order.status === "CANCELLED"
+
+  return (
+    <div className="grid gap-4">
+      {/* Header card: code + status + time */}
+      <Card className="gap-3 rounded-2xl p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs text-muted-foreground">کد سفارش</p>
+            <p className="font-mono text-2xl font-extrabold tracking-wider" dir="ltr">
+              {order.publicCode}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              ثبت در {formatDateTime(order.createdAt)}
+            </p>
+          </div>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold ${TONE_CLASSES[meta.tone]}`}
+          >
+            {meta.label}
+          </span>
+        </div>
+      </Card>
+
+      {/* Timeline */}
+      <Card className="gap-4 rounded-2xl p-5 sm:p-6">
+        <h3 className="text-sm font-bold text-muted-foreground">مراحل سفارش</h3>
+        {isCancelled ? (
+          <CancelledNotice updatedAt={order.updatedAt} />
+        ) : (
+          <Timeline currentStep={currentStep} />
+        )}
+      </Card>
+
+      {/* Order items */}
+      <Card className="gap-3 rounded-2xl p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
+            <ShoppingCart className="size-4" aria-hidden />
+            آیتم‌های سفارش
+          </h3>
+          <span className="text-xs text-muted-foreground">
+            {faNumber(order.lines.reduce((sum, l) => sum + l.qty, 0))} آیتم
+          </span>
+        </div>
+        <ul className="divide-y">
+          {order.lines.map((line) => (
+            <li key={line.id} className="flex items-center gap-3 py-3">
+              {line.image ? (
+                <img
+                  src={line.image}
+                  alt={line.name}
+                  loading="lazy"
+                  className="size-12 shrink-0 rounded-xl object-cover"
+                />
+              ) : (
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted">
+                  <ShoppingCart className="size-5 text-muted-foreground/50" aria-hidden />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold">{line.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatPrice(line.price)} × {faNumber(line.qty)}
+                </p>
+              </div>
+              <span className="text-sm font-extrabold">
+                {formatPrice(line.price * line.qty)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div className="flex items-center justify-between border-t pt-3">
+          <span className="text-sm font-medium text-muted-foreground">مجموع سفارش</span>
+          <span className="text-lg font-extrabold">{formatPrice(order.total)}</span>
+        </div>
+      </Card>
+
+      {/* Customer note (if any) */}
+      {order.note ? (
+        <Card className="gap-2 rounded-2xl p-5 sm:p-6">
+          <h3 className="text-sm font-bold text-muted-foreground">یادداشت شما</h3>
+          <p className="rounded-xl bg-muted/60 p-3 text-sm leading-6">{order.note}</p>
+        </Card>
+      ) : null}
+
+      {/* Need help? */}
+      <p className="text-center text-xs text-muted-foreground">
+        اگر سوالی درباره سفارش دارید، با رستوران تماس بگیرید.
+      </p>
+    </div>
+  )
+}
+
+function Timeline({ currentStep }: { currentStep: number }) {
+  return (
+    <ol className="relative grid gap-4">
+      {TIMELINE_STEPS.map((step, i) => {
+        const isDone = i < currentStep
+        const isCurrent = i === currentStep
+        const isFuture = i > currentStep
+        const Icon = step.icon
+        return (
+          <li key={step.status} className="relative flex items-start gap-3">
+            {/* Connector line */}
+            {i < TIMELINE_STEPS.length - 1 ? (
+              <span
+                aria-hidden
+                className={`absolute right-[18px] top-9 h-[calc(100%-16px)] w-0.5 ${
+                  isDone ? "bg-primary" : "bg-border"
+                }`}
+              />
+            ) : null}
+            {/* Icon circle */}
+            <div
+              className={`relative flex size-9 shrink-0 items-center justify-center rounded-full ring-2 transition-colors ${
+                isDone
+                  ? "bg-primary text-primary-foreground ring-primary"
+                  : isCurrent
+                    ? "bg-accent text-accent-foreground ring-accent"
+                    : "bg-muted text-muted-foreground ring-border"
+              }`}
+            >
+              <Icon className="size-4" aria-hidden />
+            </div>
+            {/* Label */}
+            <div className="flex flex-1 flex-col pt-1">
+              <p
+                className={`text-sm font-bold ${
+                  isFuture ? "text-muted-foreground" : "text-foreground"
+                }`}
+              >
+                {step.label}
+              </p>
+              {isCurrent ? (
+                <p className="text-xs text-accent-foreground/80">مرحله فعلی</p>
+              ) : isDone ? (
+                <p className="text-xs text-muted-foreground">انجام شد</p>
+              ) : (
+                <p className="text-xs text-muted-foreground/60">در انتظار</p>
+              )}
+            </div>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+function CancelledNotice({ updatedAt }: { updatedAt: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl bg-destructive/5 p-4">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+        <XCircle className="size-5" aria-hidden />
+      </div>
+      <div className="flex-1">
+        <p className="font-bold text-destructive">سفارش لغو شد</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          این سفارش در {formatDateTime(updatedAt)} لغو شده است.
+          <br />
+          برای اطلاعات بیشتر با رستوران تماس بگیرید.
+        </p>
+      </div>
+    </div>
+  )
+}

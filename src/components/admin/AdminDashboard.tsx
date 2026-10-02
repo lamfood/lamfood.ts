@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { apiFetch, ApiError } from "@/lib/api"
 import { clearAdminToken } from "@/lib/auth-client"
+import { useNewOrders, notifyNewOrder } from "@/hooks/use-new-orders"
+import { faNumber } from "@/lib/format"
 import type { PublicConfigResponse } from "@/lib/types"
 
 export default function AdminDashboard({
@@ -27,6 +29,21 @@ export default function AdminDashboard({
   const [restaurantName, setRestaurantName] = useState<string>("")
   const [logo, setLogo] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState<boolean>(false)
+  const [activeTab, setActiveTab] = useState<string>("items")
+
+  // Poll for new orders every 30s. Toast on each newly-arrived order code.
+  // (The hook skips polling when the tab is hidden — cheap on the server.)
+  const newOrdersCount = useNewOrders({
+    intervalMs: 30_000,
+    onNew: (code) => {
+      // Don't toast if the admin is already on the Orders tab — they'll
+      // see the new card appear via the tab's own poll. Only toast when
+      // they're elsewhere (items / settings) so they're alerted.
+      if (activeTab !== "orders") {
+        notifyNewOrder(code)
+      }
+    },
+  })
 
   // Public branding for the header (silent on failure).
   useEffect(() => {
@@ -125,7 +142,12 @@ export default function AdminDashboard({
           خوش آمدید، <span className="font-medium text-foreground">{username}</span>
         </p>
 
-        <Tabs defaultValue="items" className="mt-4">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          defaultValue="items"
+          className="mt-4"
+        >
           <TabsList className="h-11 w-full sm:h-10 sm:w-auto">
             <TabsTrigger value="items" className="gap-2 px-4 text-sm">
               <UtensilsCrossed className="size-4" aria-hidden />
@@ -134,6 +156,11 @@ export default function AdminDashboard({
             <TabsTrigger value="orders" className="gap-2 px-4 text-sm">
               <Package className="size-4" aria-hidden />
               سفارش‌ها
+              {newOrdersCount > 0 ? (
+                <Badge className="ms-1 h-5 min-w-5 animate-pulse rounded-full bg-accent px-1 text-[11px] font-bold text-accent-foreground shadow-sm">
+                  {faNumber(newOrdersCount)}
+                </Badge>
+              ) : null}
             </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2 px-4 text-sm">
               <Settings className="size-4" aria-hidden />

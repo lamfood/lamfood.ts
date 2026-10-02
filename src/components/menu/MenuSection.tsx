@@ -256,14 +256,19 @@ export default function MenuSection({
           aria-labelledby={`cat-heading-${group.key}`}
           className="mx-auto w-full max-w-6xl scroll-mt-24 px-4 py-8"
         >
-          <header className="mb-4 flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent-foreground">
+          <header className="mb-5 flex items-center gap-3">
+            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent-foreground ring-1 ring-accent/20">
               <group.icon className="h-5 w-5" aria-hidden />
             </div>
-            <h2 id={`cat-heading-${group.key}`} className="text-xl font-extrabold sm:text-2xl">
+            <h2
+              id={`cat-heading-${group.key}`}
+              className="flex items-center gap-3 text-xl font-extrabold sm:text-2xl"
+            >
               {group.label}
+              {/* Subtle accent underline for visual rhythm between sections */}
+              <span aria-hidden className="hidden h-0.5 flex-1 rounded-full bg-gradient-to-l from-accent/40 to-transparent sm:block" />
             </h2>
-            <Badge variant="secondary" className="rounded-full px-3 py-1">
+            <Badge variant="secondary" className="shrink-0 rounded-full px-3 py-1">
               {faNumber(group.items.length)} آیتم
             </Badge>
           </header>
