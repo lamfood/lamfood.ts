@@ -92,36 +92,39 @@ export default function AdminDashboard({
     <div className="min-h-screen bg-background">
       {/* Sticky header */}
       <header className="sticky top-0 z-30 border-b bg-background/85 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2.5">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-1 px-3 sm:h-16 sm:px-6">
+          {/* Left: logo + name (hide badge on mobile) */}
+          <div className="flex min-w-0 items-center gap-2">
             {logo ? (
               <img
                 src={logo}
                 alt={restaurantName || "لوگوی رستوران"}
-                className="size-9 shrink-0 rounded-full object-cover"
+                className="size-8 shrink-0 rounded-full object-cover sm:size-9"
               />
             ) : (
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <ChefHat className="size-5" aria-hidden />
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground sm:size-9">
+                <ChefHat className="size-4 sm:size-5" aria-hidden />
               </div>
             )}
             <span className="truncate text-sm font-bold sm:text-base">
               {restaurantName || "پنل مدیریت"}
             </span>
-            <Badge className="shrink-0">پنل مدیریت</Badge>
+            <Badge className="hidden shrink-0 sm:inline-flex">پنل مدیریت</Badge>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            <Button asChild variant="ghost" className="h-11">
-              <Link href="/">
+          {/* Right: actions — compact on mobile */}
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <Button asChild variant="ghost" size="icon" className="size-9 shrink-0 rounded-full sm:size-11">
+              <Link href="/" aria-label="مشاهده منو">
                 <ExternalLink className="size-4" aria-hidden />
                 <span className="hidden sm:inline">مشاهده منو</span>
               </Link>
             </Button>
-            <ThemeToggle />
+            <ThemeToggle className="size-9 sm:size-11" />
             <Button
               variant="outline"
-              className="h-11 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              size="icon"
+              className="size-9 shrink-0 rounded-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive sm:size-11"
               onClick={() => void handleLogout()}
               disabled={loggingOut}
               aria-label="خروج"
@@ -149,27 +152,31 @@ export default function AdminDashboard({
           defaultValue="dashboard"
           className="mt-4"
         >
-          <TabsList className="h-11 w-full overflow-x-auto sm:h-10 sm:w-auto">
-            <TabsTrigger value="dashboard" className="gap-2 px-4 text-sm">
+          <TabsList className="no-scrollbar h-11 w-full gap-1 overflow-x-auto sm:h-10 sm:w-auto sm:overflow-visible">
+            <TabsTrigger value="dashboard" className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-4 sm:text-sm">
               <LayoutDashboard className="size-4" aria-hidden />
-              داشبورد
+              <span className="hidden sm:inline">داشبورد</span>
+              <span className="sm:hidden">داشبورد</span>
             </TabsTrigger>
-            <TabsTrigger value="items" className="gap-2 px-4 text-sm">
+            <TabsTrigger value="items" className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-4 sm:text-sm">
               <UtensilsCrossed className="size-4" aria-hidden />
-              آیتم‌های منو
+              <span className="hidden sm:inline">آیتم‌های منو</span>
+              <span className="sm:hidden">آیتم‌ها</span>
             </TabsTrigger>
-            <TabsTrigger value="orders" className="gap-2 px-4 text-sm">
+            <TabsTrigger value="orders" className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-4 sm:text-sm">
               <Package className="size-4" aria-hidden />
-              سفارش‌ها
+              <span className="hidden sm:inline">سفارش‌ها</span>
+              <span className="sm:hidden">سفارش‌ها</span>
               {newOrdersCount > 0 ? (
                 <Badge className="ms-1 h-5 min-w-5 animate-pulse rounded-full bg-accent px-1 text-[11px] font-bold text-accent-foreground shadow-sm">
                   {faNumber(newOrdersCount)}
                 </Badge>
               ) : null}
             </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2 px-4 text-sm">
+            <TabsTrigger value="settings" className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-4 sm:text-sm">
               <Settings className="size-4" aria-hidden />
-              تنظیمات رستوران
+              <span className="hidden sm:inline">تنظیمات رستوران</span>
+              <span className="sm:hidden">تنظیمات</span>
             </TabsTrigger>
           </TabsList>
 

@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Bike, ChefHat, Clock, Instagram, MapPin, Phone, UtensilsCrossed } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import ThemeToggle from "@/components/menu/ThemeToggle"
 import type { RestaurantConfig } from "@/lib/types"
 
 const FA_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"]
@@ -34,10 +33,9 @@ export default function Hero({ config, isOpenNow, onOpenLocation }: HeroProps) {
 
   return (
     <header id="top" className="relative isolate overflow-hidden text-white">
-      {/* Mobile-only floating theme toggle (top-left of hero, above the image) */}
-      <div className="absolute left-3 top-3 z-20 sm:hidden">
-        <ThemeToggle />
-      </div>
+      {/* Theme toggle is now in the sticky nav (always visible on all viewports),
+          so we removed the old mobile-only floating toggle from the hero to avoid
+          having two toggles on screen at the same time. */}
 
       {hasHeroImage && (
         <img

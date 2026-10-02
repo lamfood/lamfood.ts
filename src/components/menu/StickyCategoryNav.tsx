@@ -91,16 +91,16 @@ export default function StickyCategoryNav({
       className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur-md"
     >
       <div className="mx-auto w-full max-w-6xl px-4">
-        <div className="flex h-16 items-center gap-2">
+        <div className="flex h-14 items-center gap-1.5 sm:h-16 sm:gap-2">
           <Button
             variant={searchOpen ? "secondary" : "outline"}
             size="icon"
-            className="h-11 w-11 shrink-0 rounded-full"
+            className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
             aria-label="جستجو"
             aria-expanded={searchOpen}
             onClick={() => onSearchOpenChange(!searchOpen)}
           >
-            <Search className="h-5 w-5" aria-hidden />
+            <Search className="size-4 sm:h-5 sm:w-5" aria-hidden />
           </Button>
 
           <div className="no-scrollbar relative flex flex-1 items-center gap-2 overflow-x-auto py-2">
@@ -134,11 +134,11 @@ export default function StickyCategoryNav({
           <Button
             variant="outline"
             size="icon"
-            className="relative h-11 w-11 shrink-0 rounded-full"
+            className="relative h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11"
             aria-label="سبد خرید"
             onClick={onOpenBasket}
           >
-            <ShoppingBasket className="h-5 w-5" aria-hidden />
+            <ShoppingBasket className="size-4 sm:h-5 sm:w-5" aria-hidden />
             {count > 0 && (
               <Badge className="absolute -top-1 -left-1 h-5 min-w-5 rounded-full px-1 text-[11px]">
                 {faNumber(count)}
@@ -146,7 +146,7 @@ export default function StickyCategoryNav({
             )}
           </Button>
 
-          <ThemeToggle className="hidden sm:inline-flex" />
+          <ThemeToggle className="h-9 w-9 shrink-0 rounded-full sm:h-11 sm:w-11" />
         </div>
 
         <AnimatePresence initial={false}>
