@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import { motion } from "framer-motion"
-import { Clock, Info, Minus, Plus, SearchX, Sparkles, UtensilsCrossed } from "lucide-react"
+import { Clock, Flame, Info, Minus, Plus, SearchX, Sparkles, UtensilsCrossed } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -73,6 +73,16 @@ function ItemCard({
           <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-background/85 px-2 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm backdrop-blur">
             <Clock className="size-2.5" aria-hidden />
             {formatTimeFa(item.availableFrom!)}—{formatTimeFa(item.availableTo!)}
+          </span>
+        ) : null}
+
+        {/* "Popular" flame badge for items with high view counts (≥5 views).
+            Shown bottom-left of the image so it doesn't collide with the
+            featured ribbon (top-right) or availability badges (top-left). */}
+        {!hasTimeWindow && item.viewCount >= 5 && !item.featured ? (
+          <span className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1 rounded-full bg-orange-500/90 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur">
+            <Flame className="size-2.5" aria-hidden />
+            محبوب
           </span>
         ) : null}
 

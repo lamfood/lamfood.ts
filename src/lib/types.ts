@@ -49,6 +49,9 @@ export interface MenuItemDTO {
    *  null, the item is available all day. Supports overnight windows. */
   availableFrom: string | null
   availableTo: string | null
+  /** Incremented when the customer opens the item details dialog.
+   *  Used for the "محبوب‌ترین" sort + flame badges. */
+  viewCount: number
 }
 
 /** A selectable add-on for a menu item. `price` is in «هزار تومان» units

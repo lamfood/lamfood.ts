@@ -199,6 +199,9 @@ export default function Home() {
     if (effectiveSort === "name-desc") {
       return [...filtered].sort((a, b) => b.name.localeCompare(a.name, "fa"))
     }
+    if (effectiveSort === "popular") {
+      return [...filtered].sort((a, b) => b.viewCount - a.viewCount)
+    }
     return filtered
   }, [items, searchQuery, effectiveCategoryFilter, effectiveSort])
 

@@ -38,6 +38,10 @@ model MenuItem {
   availableFrom String?
   availableTo   String?
 
+  /** Incremented each time a customer opens the item details dialog.
+   *  Used for the "محبوب‌ترین" (most popular) sort + flame badges. */
+  viewCount Int @default(0)
+
   @@index([category])
   @@index([featured])
 }

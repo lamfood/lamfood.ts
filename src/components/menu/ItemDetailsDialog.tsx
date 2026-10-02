@@ -1,8 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Minus, Plus, ShoppingBasket, UtensilsCrossed, X } from "lucide-react"
+import { Flame, Minus, Plus, ShoppingBasket, UtensilsCrossed, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -75,6 +75,22 @@ function ItemDetailsContent({
   const qty = useBasketStore((state) => state.lines[item.id]?.qty ?? 0)
   const add = useBasketStore((state) => state.add)
   const setQty = useBasketStore((state) => state.setQty)
+
+  /** Fire-and-forget view increment when the dialog opens. Uses a ref so
+   *  it only fires once per mount (the `key={item.id}` on DialogContent
+   *  remounts the component per item, so each open = one increment). */
+  const viewFiredRef = useRef(false)
+  useEffect(() => {
+    if (viewFiredRef.current) return
+    viewFiredRef.current = true
+    // Fire-and-forget — errors are swallowed by the API route + we don't
+    // want a failed view-tracking call to block the dialog UX.
+    void fetch("/api/menu/view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId: item.id }),
+    }).catch(() => {})
+  }, [item.id])
 
   /** Selected option ids per group id. For single-select groups, the array
    *  has exactly one element (the selected option). For multiSelect groups,

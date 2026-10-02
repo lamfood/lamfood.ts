@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button"
 import { CATEGORIES } from "@/lib/categories"
 import { cn } from "@/lib/utils"
 
-export type SortKey = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc"
+export type SortKey = "default" | "price-asc" | "price-desc" | "name-asc" | "name-desc" | "popular"
 
 export const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "default", label: "پیش‌فرض" },
+  { key: "popular", label: "محبوب‌ترین" },
   { key: "price-asc", label: "ارزان‌ترین" },
   { key: "price-desc", label: "گران‌ترین" },
   { key: "name-asc", label: "نام (الفبا)" },
