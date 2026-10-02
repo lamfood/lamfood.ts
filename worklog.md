@@ -1367,3 +1367,63 @@ Recommended priority for the next 15-min round: pick #1 (bulk admin
 operations — medium, improves admin efficiency) or #3 (order editing —
 medium, improves customer UX). #4 is a content fix the admin can do
 themselves.
+
+---
+Task ID: 12
+Agent: main (user-requested features)
+Task: Implement 5 user-requested features:
+1. Clear all orders button in admin panel
+2. Delete single order in admin OrdersManager
+3. پیگیری سفارش link inside BasketSheet
+4. Price formatting: میلیون تومان for amounts ≥ 1000
+5. Default light mode (no auto-detect prefers-color-scheme:dark)
+
+## Goals / completed modifications / verification
+
+### 1. Admin: clear all orders button
+- `src/app/api/admin/orders/route.ts`: added DELETE handler —
+  `db.order.deleteMany({})` returns `{ ok, deletedCount }`. Admin-only,
+  CSRF-guarded.
+- `src/components/admin/OrdersManager.tsx`: "پاک‌سازی همه" button in the
+  toolbar (destructive red styling, hidden when no orders). AlertDialog
+  confirmation shows the order count + warns it's irreversible.
+- Verified: button visible in toolbar, confirmation dialog shows
+  "پاک‌سازی همه سفارش‌ها".
+
+### 2. Admin: delete single order
+- `src/app/api/admin/orders/[id]/route.ts`: added DELETE handler —
+  deletes a single order by id. Admin-only, CSRF-guarded.
+- `src/components/admin/OrdersManager.tsx`: each OrderCard now has a
+  trash button next to "مشاهده". AlertDialog confirmation shows the
+  order's publicCode + warns it's irreversible.
+- Verified: 9 delete buttons visible (one per order), confirmation
+  dialog shows "حذف سفارش «LF-79Z5M»".
+
+### 3. Basket: پیگیری سفارش link in empty state
+- `src/components/menu/BasketSheet.tsx`: the empty basket state now
+  shows a "پیگیری سفارش" link (with Package icon, links to /track)
+  below the "مشاهده منو" button — so the customer can track a
+  previous order without closing the basket + scrolling to the footer.
+- Verified: link visible in empty basket, href="/track".
+
+### 4. Price formatting: میلیون تومان for large amounts
+- `src/lib/format.ts`: `formatPrice()` now shows "X میلیون تومان" when
+  price >= 1000. Whole millions show without decimals (2000 → "۲ میلیون
+  تومان"); fractional millions show up to 3 decimals (1255 → "۱٫۲۵۵
+  میلیون تومان"). Below 1000 keeps "X هزار تومان" (250 → "۲۵۰ هزار
+  تومان").
+- Verified: 250 → "۲۵۰ هزار تومان", 999 → "۹۹۹ هزار تومان",
+  1000 → "۱ میلیون تومان", 1255 → "۱٫۲۵۵ میلیون تومان",
+  2000 → "۲ میلیون تومان".
+
+### 5. Default light mode
+- `src/app/layout.tsx`: the FOUC-prevention script no longer auto-detects
+  `prefers-color-scheme: dark`. Default is LIGHT mode — the user must
+  explicitly opt into dark via the toggle.
+- `src/components/menu/ThemeToggle.tsx`: updated comment.
+- Verified: `hasDarkClass=false`, `bg=#E8EEF2` on first visit.
+
+## Commit & push
+- Commit `52ff7fd feat: admin order delete/clear-all, basket track link,
+  price formatting, default light` (7 files, +244 / -19).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
