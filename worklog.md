@@ -247,3 +247,134 @@ details and add more features/functionality.
 Recommended priority for the next 15-min round: pick #4 (dark mode toggle) or
 #6 (search filters) — both are scoped, user-visible, and don't require schema
 migrations.
+
+---
+Task ID: 3
+Agent: main (webDevReview — cron-triggered round 2)
+Task: QA the current state via agent-browser, fix any bugs found, then add
+new features and styling polish. Mandatory: improve styling with more
+details and add more features/functionality.
+
+## Current project status (assessment at start of round)
+- All previous work pushed (commits `77fe475` + `1093f98`): 12 categories,
+  theme-tokens bug fix, CategoryGrid, featured items, item details dialog,
+  back-to-top button, admin featured toggle.
+- Dev server running on port 3000; 24 items seeded (6 featured).
+- /admin login works (admin/admin123).
+- No build/runtime errors.
+
+## QA findings (via agent-browser + VLM)
+- ⚠️ **Critical bug found**: image MIME mismatch.
+  - All 24 menu images + `hero.png` were JPEG-encoded but had `.png`
+    extension. The server (Next.js static) sent `Content-Type: image/png`
+    based on the extension, but the file bytes started with the JPEG
+    magic (`ff d8 ff e0`).
+  - Browsers intermittently rejected these as corrupt — agent-browser
+    reported 16/24 images "broken" after lazy-load (the 6 that loaded
+    were the ones above the fold / in the featured rail).
+  - VLM review of the home page flagged "missing product imagery" and
+    "empty gray placeholder boxes" in the lower categories — confirmed
+    this was the MIME issue, not missing files.
+- ✅ Featured section, item details dialog, basket, admin all working
+  correctly.
+- VLM suggested general polish (touch targets, contrast on sticky nav
+  active state, hero CTA hover affordance).
+
+## Goals / completed modifications / verification
+
+### Bug fixes
+- **Image MIME mismatch**: renamed all 24 files + `hero.png` → `.jpg`
+  (the actual format). Updated `scripts/seed.ts` (25 image refs) and
+  `config.json` (`heroImage` path). Re-seeded the DB. Verified via
+  agent-browser: 24/24 images load cleanly. (`logo.png` is a real PNG —
+  left untouched. The `/api/admin/upload` route already uses magic-byte
+  detection + correct extension, so future admin uploads are unaffected.)
+
+### New features (mandatory)
+1. **Dark mode toggle**:
+   - `src/components/menu/ThemeToggle.tsx`: animated sun↔moon button
+     (300ms slide+rotate), persists to `localStorage["lamfood-theme-mode"]`,
+     respects `prefers-color-scheme: dark` on first visit. Uses
+     `useSyncExternalStore` (React's recommended pattern for external
+     mutable state) to avoid cascading renders and the
+     `react-hooks/set-state-in-effect` lint rule.
+   - `src/app/layout.tsx`: inline FOUC-prevention script runs synchronously
+     in `<head>` before first paint, reads localStorage, adds `.dark`
+     class to `<html>` — so the page never flashes the wrong theme.
+   - `src/components/ThemeProvider.tsx`: refactored `applyTheme()` to
+     detect the dark class and recompute every derived token against the
+     new surface/foreground pair. Brand identity is preserved (primary +
+     accent stay user-controlled); only background/foreground/card are
+     overridden with dark-mode neutrals (`#0b1f23` / `#e8eef0` / `#102a30`).
+     ThemeProvider now listens for the `lamfood:theme-mode-change` event
+     and re-applies the brand palette when the mode flips.
+   - Toggle placement: StickyCategoryNav (desktop, `hidden sm:inline-flex`
+     to avoid cramping the chip rail on mobile) + Hero (mobile-only floating
+     button top-left, `sm:hidden`).
+2. **Search filters** (`src/components/menu/SearchFilters.tsx`):
+   - Inline filter bar shown below the search input when the user is
+     searching. Two rails:
+     * Category filter chips: "همه" (All) + 12 categories (toggle on click).
+     * Sort chips: پیش‌فرض / ارزان‌ترین / گران‌ترین (default / price-asc /
+       price-desc).
+   - "پاک کردن فیلترها" button appears when any non-default filter is active.
+   - Wired into `StickyCategoryNav` (renders inside the search dropdown)
+     and `page.tsx` (owns the filter/sort state, applies them to
+     `searchResults`). Filter state auto-resets when the query is cleared
+     (computed inline via `effectiveCategoryFilter` / `effectiveSort`,
+     not via useEffect — keeps the lint `set-state-in-effect` rule happy).
+
+### Styling polish (mandatory)
+- **Hero**: refined gradient (`from-primary/95 via-primary/85 to-primary/75`
+  in image mode; `via-primary/90 to-primary/95` in solid mode), added a
+  subtle 32px texture grid overlay (4% opacity) for depth, CTA hover
+  micro-interactions (`shadow-xl shadow-accent/30 active:scale-[0.98]`,
+  icon `group-hover:scale-110`).
+- **InfoCards**: added hover lift (`-translate-y-0.5 hover:shadow-md`) on
+  all 5 info cards; `CardIcon` now has `ring-1 ring-primary/15` for
+  better definition.
+
+### Verification
+- Lint: `bun run lint` → 0 errors (after fixing 3 initial
+  `set-state-in-effect` violations by switching to `useSyncExternalStore`
+  and inline-derived state).
+- Endpoints: `GET /` 200, `GET /admin` 200, `GET /api/menu` 200.
+- agent-browser:
+  * **Light mode**: 24/24 images load; featured section (6 cards equal
+    height); admin login + 24 items; mobile 375×800.
+  * **Dark mode**: toggle works on desktop (nav) + mobile (hero floating);
+    background `#E8EEF2` → `#0b1f23`; card `#fff` → `#102a30`;
+    localStorage persists across reload.
+  * **Search filters**: searching "پیتزا" → 2 results; sort ارزان‌ترین →
+    [۲۵۰, ۲۷۰]; sort گران‌ترین → [۲۷۰, ۲۵۰]; searching "مرغ" → 4 results,
+    filtering to برگر → 1 result.
+  * No console errors, no page errors.
+
+## Commit & push
+- Commit `4a99d94 feat(menu): dark mode, search filters, image MIME fix,
+  hero polish` (35 files, +531 / -92).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+## Unresolved issues / risks & next-phase recommendations
+1. **WhatsApp checkout is still URL-only** — no order tracking, no order ID,
+   no server-side persistence. (Carried over from round 2.) Adding an
+   `Order` model + tiny order-submit API + admin "recent orders" tab
+   would be the highest-impact next feature.
+2. **No item options/addons** — e.g. burger size, extra cheese, spiciness.
+   Would need a related `ItemOption` model and a more complex basket line.
+3. **ItemForm image upload** requires the user to pick a file or paste a
+   URL; there's no "pick from existing uploads" media library browser.
+4. **Search is still name/description only** — could add search-by-category
+   and a popularity sort (would need a per-item view/add counter).
+5. **Dark mode is public-menu only** — the /admin pages don't have a
+   toggle (they always use light mode). Could add ThemeToggle to the admin
+   header too; the dark neutrals in ThemeProvider already handle the
+   sidebar tokens.
+6. **VLM noted hero image is busy** in dark mode (food photography
+   competes with text). Could darken the gradient overlay further in
+   dark mode, or add a `backdrop-blur-sm` on the hero text container.
+
+Recommended priority for the next 15-min round: pick #5 (admin dark
+mode — trivial, just add ThemeToggle to AdminDashboard header) or #1
+(order persistence — bigger but high-impact). #6 (hero overlay in dark
+mode) is also a cheap polish win.
