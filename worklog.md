@@ -822,3 +822,114 @@ Recommended priority for the next 15-min round: pick #5 (customer order
 history — small, builds on /track) or #4 (multi-select option groups —
 medium, builds on the options we just shipped). #6 is a content fix the
 admin can do themselves.
+
+---
+Task ID: 7
+Agent: main (webDevReview — cron-triggered round 6)
+Task: QA the current state via agent-browser, fix any bugs found, then add
+new features and styling polish. Mandatory: improve styling with more
+details and add more features/functionality.
+
+## Current project status (assessment at start of round)
+- All previous work pushed (commits `77fe475` → `8c30ce1`): 12 categories,
+  theme bug fix, CategoryGrid, featured items, item details dialog,
+  back-to-top, admin featured toggle, dark mode (public + admin),
+  search filters, image MIME fix, hero polish, order persistence,
+  admin Orders tab + notifications, public tracking page with auto-refresh,
+  item options/addons (single-select radio groups).
+- Dev server running on port 3000; 24 items seeded (6 featured); cheeseburger
+  has a single-select "اندازه" group; 3+ orders in DB from round 6 QA.
+- /admin login works (admin/admin123).
+- Round-6 handover recommended: #5 customer order history, #4 multi-select
+  option groups.
+
+## QA findings (via agent-browser + VLM)
+- ✅ All previous features working: 24/24 images load, dark mode toggle,
+  search filters, featured section, item details dialog with single-select
+  options, order submission → admin Orders tab + notifications, public
+  tracking page with 30s auto-refresh.
+- ⚠️ Gaps (carried over from round 6):
+  * Option groups were radio-only — no checkbox support for add-ons like
+    "extra cheese" or "no ice".
+  * No order history for the customer — had to remember the order code
+    to re-track.
+
+## Goals / completed modifications / verification
+
+### New feature: multi-select option groups (#4)
+- `src/lib/types.ts`: added optional `multiSelect?: boolean` to
+  `ItemOptionGroupDTO`. When true, the customer can select multiple options
+  (checkboxes); when false (default), single selection (radio).
+- `src/lib/menu-items.ts`: `parseOptionsJson()` now preserves the
+  `multiSelect` field (default false for backward compat).
+- `src/app/api/admin/items/route.ts`: `optionGroupSchema` accepts
+  `multiSelect` (boolean, default false).
+- `src/components/admin/ItemForm.tsx`: OptionsEditor now has a
+  "چندانتخابی" Switch per group header. The default-indicator input
+  switches between checkbox (multiSelect) and radio (single-select).
+  `toggleDefault()` uses checkbox behavior (toggle independently) for
+  multiSelect groups, radio behavior (exactly one) for single-select.
+  `toggleMultiSelect()` cleans up defaults when switching to single
+  (keeps only the first default).
+- `src/components/menu/ItemDetailsDialog.tsx`: `OptionGroup` now renders
+  checkboxes for multiSelect groups + radios for single-select. State
+  changed to `Record<groupId, string[]>` (array of selected ids per
+  group). `selectOption()` for radio (replaces), `toggleOption()` for
+  checkbox (adds/removes). The effective price + selected names compute
+  over the array. A "چندانتخابی" / "یک گزینه" badge on the fieldset
+  legend tells the customer which mode the group is in.
+
+### New feature: customer order history (#5)
+- `src/hooks/use-recent-orders.ts` (new): localStorage-backed list of recent
+  order codes (max 10, newest first). Uses `useSyncExternalStore` for
+  SSR-safe reads (server snapshot = empty array, no hydration mismatch).
+  `addRecentOrder()` deduplicates by code (re-submitting moves to top).
+  Dispatches a custom event so subscribed hooks re-render.
+- `src/components/menu/BasketSheet.tsx`: on successful order submit, calls
+  `addRecentOrder({code, createdAt, total})` so the customer can re-track
+  the order later.
+- `src/app/track/page.tsx`: `IdleHint` now shows a "سفارش‌های اخیر شما"
+  card when the customer has recent orders on this device. Each entry is
+  a button (code + date + total) that loads the order immediately via the
+  existing lookup function. A footer note clarifies the list is device-local.
+
+### Verification (agent-browser end-to-end)
+- **Multi-select admin ItemForm**: added a multiSelect "افزودنی‌ها" group
+  to the latte with "شات اضافه" (+30, default) + "سیروپ وانیل" (+15).
+  Saved → API returns the group with `multiSelect: true`.
+- **Multi-select customer dialog**: opened the latte → dialog shows 2
+  checkboxes (not radios) + "چندانتخابی" badge → selected both → live
+  price updated 85 → 130 → added to basket → basket line shows "شات اضافه،
+  سیروپ وانیل" → order persisted → admin order detail shows both options.
+- **Order history**: submitted the latte order → went to /track → saw
+  "سفارش‌های اخیر شما" card with 1 entry (LF-PPB85, 130 هزار تومان) →
+  clicked it → order loaded with timeline + items.
+- **Lint**: 0 errors. No console errors.
+
+## Commit & push
+- Commit `8eafc08 feat: multi-select option groups + customer order history`
+  (8 files, +330 / -41).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+## Unresolved issues / risks & next-phase recommendations
+1. **ItemForm image upload** requires the user to pick a file or paste a
+   URL; there's no "pick from existing uploads" media library browser.
+   (Carried over from round 4.)
+2. **Search is still name/description only** — could add search-by-category
+   and a popularity sort (would need a per-item view/add counter).
+   (Carried over from round 4.)
+3. **Order notifications are poll-based** (30s). For true real-time push,
+   could add a WebSocket mini-service. (Carried over from round 5.)
+4. **Content mismatch** (VLM-flagged, pre-existing): the hero text is
+   Persian/Iranian cuisine but the hero image shows pizza/pasta/burgers.
+   The admin can fix this by changing `heroImage` in Settings.
+5. **No item availability per-time-of-day** — e.g. breakfast items should
+   be hidden after 11am. Would need a `availableHours` field on MenuItem.
+6. **No order editing** — once submitted, the customer can't modify the
+   order (add/remove items, change options). Would need a customer-side
+   edit flow that calls the admin PUT endpoint (currently admin-only).
+
+Recommended priority for the next 15-min round: pick #5 (item availability
+per-time-of-day — medium, useful for real restaurants) or #1 (media
+library browser — medium, improves admin UX). #4 is a content fix the
+admin can do themselves.
