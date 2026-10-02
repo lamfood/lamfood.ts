@@ -1,14 +1,14 @@
-import "server-only"
+import "server-only";
 
-import fs from "fs"
-import path from "path"
-import { z } from "zod"
+import fs from "fs";
+import path from "path";
+import { z } from "zod";
 
-import type { RestaurantConfig } from "@/lib/types"
+import type { RestaurantConfig } from "@/lib/types";
 
-const CONFIG_PATH = path.join(process.cwd(), "config.json")
+const CONFIG_PATH = path.join(process.cwd(), "config.json");
 
-const timeRe = /^(?:[01]?\d|2[0-4]):[0-5]\d$/
+const timeRe = /^(?:[01]?\d|2[0-4]):[0-5]\d$/;
 
 export const restaurantConfigSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -25,7 +25,10 @@ export const restaurantConfigSchema = z.object({
     .string()
     .trim()
     .max(15)
-    .refine((v) => v === "" || /^\d{6,15}$/.test(v), "شماره واتساپ باید فقط رقم و با کد کشور باشد (مثل 98912...)")
+    .refine(
+      (v) => v === "" || /^\d{6,15}$/.test(v),
+      "شماره واتساپ باید فقط رقم و با کد کشور باشد (مثل 98912...)",
+    )
     .default(""),
   address: z.string().trim().max(300).default(""),
   location: z
@@ -36,14 +39,14 @@ export const restaurantConfigSchema = z.object({
     .default({ lat: 35.7, lng: 51.4 }),
   instagram: z.string().trim().max(300).default(""),
   snappfood: z.string().trim().max(300).default(""),
-})
+});
 
 export const restaurantUpdateSchema = z.object({
   restaurant: restaurantConfigSchema,
-})
+});
 
 const DEFAULT_RESTAURANT: RestaurantConfig = {
-  name: "لام‌فود",
+  name: "لم‌فود",
   nameEn: "LamFood",
   tagline: "",
   logo: "",
@@ -58,58 +61,65 @@ const DEFAULT_RESTAURANT: RestaurantConfig = {
   location: { lat: 35.7, lng: 51.4 },
   instagram: "",
   snappfood: "",
-}
+};
 
 export interface AdminConfig {
-  restaurant: RestaurantConfig
-  admin: { username: string; passwordHash: string }
-  sessionSecret: string
+  restaurant: RestaurantConfig;
+  admin: { username: string; passwordHash: string };
+  sessionSecret: string;
 }
 
 function atomicWrite(data: string) {
-  const tmp = CONFIG_PATH + ".tmp"
-  fs.writeFileSync(tmp, data, "utf-8")
-  fs.renameSync(tmp, CONFIG_PATH)
+  const tmp = CONFIG_PATH + ".tmp";
+  fs.writeFileSync(tmp, data, "utf-8");
+  fs.renameSync(tmp, CONFIG_PATH);
 }
 
 /** Read + validate config.json; falls back to defaults for invalid restaurant fields. */
 export function readConfig(): AdminConfig {
-  let raw: Record<string, unknown> = {}
+  let raw: Record<string, unknown> = {};
   try {
-    raw = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"))
+    raw = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
   } catch {
-    raw = {}
+    raw = {};
   }
 
-  const parsed = restaurantConfigSchema.safeParse(raw.restaurant)
-  const restaurant: RestaurantConfig = parsed.success ? parsed.data : DEFAULT_RESTAURANT
+  const parsed = restaurantConfigSchema.safeParse(raw.restaurant);
+  const restaurant: RestaurantConfig = parsed.success
+    ? parsed.data
+    : DEFAULT_RESTAURANT;
 
-  const adminRaw = (raw.admin ?? {}) as { username?: unknown; passwordHash?: unknown }
+  const adminRaw = (raw.admin ?? {}) as {
+    username?: unknown;
+    passwordHash?: unknown;
+  };
   const admin = {
-    username: typeof adminRaw.username === "string" ? adminRaw.username : "admin",
-    passwordHash: typeof adminRaw.passwordHash === "string" ? adminRaw.passwordHash : "",
-  }
+    username:
+      typeof adminRaw.username === "string" ? adminRaw.username : "admin",
+    passwordHash:
+      typeof adminRaw.passwordHash === "string" ? adminRaw.passwordHash : "",
+  };
   const sessionSecret =
     typeof raw.sessionSecret === "string" && raw.sessionSecret.length >= 32
       ? raw.sessionSecret
-      : ""
+      : "";
 
-  return { restaurant, admin, sessionSecret }
+  return { restaurant, admin, sessionSecret };
 }
 
 export function getPublicConfig(): { restaurant: RestaurantConfig } {
-  return { restaurant: readConfig().restaurant }
+  return { restaurant: readConfig().restaurant };
 }
 
 /** Validate + persist a new restaurant config (admin settings). */
 export function updateRestaurantConfig(input: unknown): RestaurantConfig {
-  const parsed = restaurantUpdateSchema.safeParse(input)
+  const parsed = restaurantUpdateSchema.safeParse(input);
   if (!parsed.success) {
-    const first = parsed.error.issues[0]
-    throw new Error(first?.message ?? "اطلاعات وارد شده نامعتبر است")
+    const first = parsed.error.issues[0];
+    throw new Error(first?.message ?? "اطلاعات وارد شده نامعتبر است");
   }
-  const current = readConfig()
-  const next: AdminConfig = { ...current, restaurant: parsed.data.restaurant }
-  atomicWrite(JSON.stringify(next, null, 2) + "\n")
-  return next.restaurant
+  const current = readConfig();
+  const next: AdminConfig = { ...current, restaurant: parsed.data.restaurant };
+  atomicWrite(JSON.stringify(next, null, 2) + "\n");
+  return next.restaurant;
 }
