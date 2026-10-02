@@ -1055,3 +1055,106 @@ Recommended priority for the next 15-min round: pick #5 (featured section
 availability badge — small, ensures consistency) or #2 (search-by-category
 + popularity sort — medium, improves discovery). #4 is a content fix the
 admin can do themselves.
+
+---
+Task ID: 9
+Agent: main (webDevReview — cron-triggered round 8)
+Task: QA the current state via agent-browser, fix any bugs found, then add
+new features and styling polish. Mandatory: improve styling with more
+details and add more features/functionality.
+
+## Current project status (assessment at start of round)
+- All previous work pushed (commits `77fe475` → `8f6b14b`): 12 categories,
+  theme bug fix, CategoryGrid, featured items, item details dialog,
+  back-to-top, admin featured toggle, dark mode (public + admin),
+  search filters, image MIME fix, hero polish, order persistence,
+  admin Orders tab + notifications, public tracking page with auto-refresh,
+  item options/addons (single + multi-select), customer order history,
+  time-based item availability, media library browser.
+- Dev server running on port 3000; 24 items seeded (6 featured); breakfast
+  has 07:00-11:00 time window; 2 items with options; 4+ orders in DB.
+- /admin login works (admin/admin123).
+- Round-8 handover recommended: #5 featured section availability badge,
+  #2 search-by-category + popularity sort.
+
+## QA findings (via agent-browser)
+- ✅ All previous features working: 24/24 images load, dark mode toggle,
+  search filters, featured section, item details dialog with options,
+  order submission → admin Orders tab + notifications, public tracking
+  page with auto-refresh + recent orders, time-based availability,
+  media library browser.
+- ⚠️ Gap: featured section cards didn't show availability badges —
+  the breakfast item (07:00-11:00) showed "فعلاً موجود نیست" in the menu
+  section but NOT in the featured rail. Consistency issue.
+- ⚠️ Gap: search only matched name/description — searching "برگر" didn't
+  find burger items unless their names contained the word.
+
+## Goals / completed modifications / verification
+
+### Fix: featured section availability badges (#5)
+- `src/components/menu/FeaturedSection.tsx`: FeaturedCard now checks
+  `isItemAvailableNow()` client-side — same as the MenuSection ItemCard.
+  Shows the "فعلاً موجود نیست" destructive badge + dims the card
+  (opacity-60) when outside the time window; shows the subtle hours
+  hint badge when available. Add button is disabled + says "ناموجود"
+  when unavailable.
+- Verified: the breakfast item in the featured rail now shows the badge
+  + is dimmed — consistent with the menu section card.
+
+### New feature: search-by-category (#2 partial)
+- `src/app/page.tsx`: `searchResults` now matches against the category
+  label too (not just name + description). Searching "برگر" now finds
+  both burger items even if their names don't contain "برگر".
+- `src/components/menu/StickyCategoryNav.tsx`: updated the search
+  placeholder to "جستجو در منو (نام، توضیحات، دسته)…" so the customer
+  knows they can search by category.
+
+### New feature: name sort options (#2 partial)
+- `src/components/menu/SearchFilters.tsx`: added two new sort options:
+  "نام (الفبا)" (name-asc, Persian localeCompare) and "نام (معکوس)"
+  (name-desc). Now 5 sort options total: default, cheapest, most
+  expensive, name A-Z, name Z-A.
+- `src/app/page.tsx`: handles the two new sort keys with
+  `localeCompare(b.name, "fa")`.
+
+### Verification
+- Lint: `bun run lint` → 0 errors.
+- Endpoints: `GET /` 200, `GET /admin` 200, `GET /track` 200.
+- agent-browser:
+  * **Featured section**: breakfast item (07:00-11:00) now shows the
+    "فعلاً موجود نیست" badge + is dimmed — consistent with the menu
+    section card. Verified: `hasAvailabilityBadge: true, isDimmed: true`.
+  * **Search-by-category**: searching "برگر" finds 2 items (چیزبرگر
+    مخصوص لم + برگر مرغ تند) — previously only matched if the name
+    contained "برگر".
+  * **Name sort**: clicking "نام (الفبا)" sorts results alphabetically
+    (برگر مرغ تند before چیزبرگر مخصوص لم — Persian localeCompare).
+  * No console errors, no page errors.
+
+## Commit & push
+- Commit `8fbe1e5 feat: featured availability badges + search-by-category
+  + name sort` (4 files, +44 / -11).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+## Unresolved issues / risks & next-phase recommendations
+1. **Search popularity sort** — the name/description/category search +
+   price/name sorts are done, but a "popular" sort would need a per-item
+   view/add counter. Would need a `viewCount` + `addToBasketCount` on
+   MenuItem, incremented via the API. (Remaining from #2.)
+2. **Order notifications are poll-based** (30s). For true real-time push,
+   could add a WebSocket mini-service. (Carried over from round 5.)
+3. **No order editing** — once submitted, the customer can't modify the
+   order. Would need a customer-side edit flow. (Carried over from round 7.)
+4. **Content mismatch** (VLM-flagged, pre-existing): hero text is Persian
+   cuisine but hero image shows pizza/pasta/burgers. Admin can fix via
+   `heroImage` in Settings. (Carried over.)
+5. **No bulk admin operations** — can't bulk-toggle availability, bulk-
+   delete, or drag-to-reorder items. Would need a multi-select + drag
+   interface. (Carried over from round 8.)
+6. **No admin dashboard stats** — the admin has the Orders tab with stats
+   cards, but no overall dashboard (total revenue, orders per day, top
+   items, etc.). Would need an aggregation API + chart components.
+
+Recommended priority for the next 15-min round: pick #6 (admin dashboard
+stats — medium, high-impact for restaurant ops) or #1 (popularity sort —
+medium, improves discovery). #4 is a content fix the admin can do themselves.
