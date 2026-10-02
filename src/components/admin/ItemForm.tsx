@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { GripVertical, ImagePlus, Loader2, Link2, Plus, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
@@ -60,6 +60,11 @@ export default function ItemForm({
   const [featured, setFeatured] = useState<boolean>(false)
   /** Admin-defined option groups (e.g. size, spice level). Empty = no options. */
   const [optionGroups, setOptionGroups] = useState<ItemOptionGroupDTO[]>([])
+  /** Time-of-day availability window (HH:MM). Both null = always available. */
+  const [availableFrom, setAvailableFrom] = useState<string>("")
+  const [availableTo, setAvailableTo] = useState<string>("")
+  /** Media library browser dialog open state. */
+  const [mediaLibOpen, setMediaLibOpen] = useState<boolean>(false)
 
   const [uploading, setUploading] = useState<boolean>(false)
   const [saving, setSaving] = useState<boolean>(false)
@@ -78,6 +83,8 @@ export default function ItemForm({
     setAvailable(initial?.available ?? true)
     setFeatured(initial?.featured ?? false)
     setOptionGroups(initial?.options ?? [])
+    setAvailableFrom(initial?.availableFrom ?? "")
+    setAvailableTo(initial?.availableTo ?? "")
     setShowUrlInput(false)
     setUploading(false)
     setSaving(false)
@@ -141,6 +148,8 @@ export default function ItemForm({
         featured,
         sortOrder: initial?.sortOrder ?? 0,
         options: optionGroups,
+        availableFrom: availableFrom || null,
+        availableTo: availableTo || null,
       }
 
       if (initial) {
@@ -246,14 +255,24 @@ export default function ItemForm({
                 aria-label="آدرس تصویر"
               />
             ) : (
-              <button
-                type="button"
-                onClick={() => setShowUrlInput(true)}
-                className="flex h-8 w-fit items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-              >
-                <Link2 className="size-3.5" aria-hidden />
-                یا وارد کردن آدرس تصویر (اختیاری)
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowUrlInput(true)}
+                  className="flex h-8 w-fit items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                >
+                  <Link2 className="size-3.5" aria-hidden />
+                  یا وارد کردن آدرس تصویر
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMediaLibOpen(true)}
+                  className="flex h-8 w-fit items-center gap-1 text-xs text-primary underline-offset-4 hover:underline"
+                >
+                  <ImagePlus className="size-3.5" aria-hidden />
+                  انتخاب از کتابخانه تصاویر
+                </button>
+              </div>
             )}
           </div>
 
@@ -361,6 +380,47 @@ export default function ItemForm({
           {/* Options / add-ons editor */}
           <OptionsEditor optionGroups={optionGroups} onChange={setOptionGroups} />
 
+          {/* Time-of-day availability */}
+          <div className="grid gap-2 rounded-xl border bg-muted/20 p-3">
+            <Label className="text-sm font-bold">ساعت موجود بودن (اختیاری)</Label>
+            <p className="text-xs text-muted-foreground">
+              اگر خالی بگذارید، این آیتم همیشه موجود است. برای محدود کردن به ساعات خاص، ساعت شروع و پایان را وارد کنید.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-1">
+                <Label htmlFor="item-available-from" className="text-xs text-muted-foreground">از ساعت</Label>
+                <Input
+                  id="item-available-from"
+                  type="time"
+                  dir="ltr"
+                  className="h-9 text-left text-sm"
+                  value={availableFrom}
+                  onChange={(e) => setAvailableFrom(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="item-available-to" className="text-xs text-muted-foreground">تا ساعت</Label>
+                <Input
+                  id="item-available-to"
+                  type="time"
+                  dir="ltr"
+                  className="h-9 text-left text-sm"
+                  value={availableTo}
+                  onChange={(e) => setAvailableTo(e.target.value)}
+                />
+              </div>
+            </div>
+            {availableFrom && availableTo ? (
+              <button
+                type="button"
+                onClick={() => { setAvailableFrom(""); setAvailableTo("") }}
+                className="w-fit text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                پاک کردن محدودیت ساعت
+              </button>
+            ) : null}
+          </div>
+
           <Button type="submit" disabled={saving || uploading} className="h-12 w-full font-bold">
             {saving ? (
               <>
@@ -373,6 +433,19 @@ export default function ItemForm({
           </Button>
         </form>
       </DialogContent>
+
+      {/* Media library browser — lets the admin pick from existing uploads */}
+      <MediaLibraryBrowser
+        open={mediaLibOpen}
+        onOpenChange={setMediaLibOpen}
+        onPick={(url) => {
+          setImage(url)
+          setMediaLibOpen(false)
+          toast.success("تصویر انتخاب شد")
+        }}
+        currentImage={image}
+        onUnauthorized={onUnauthorized}
+      />
     </Dialog>
   )
 }
@@ -635,5 +708,138 @@ function OptionsEditor({
         </div>
       )}
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Media library browser                                               */
+/* ------------------------------------------------------------------ */
+
+interface MediaFile {
+  url: string
+  name: string
+  size: number
+  mtime: string
+}
+
+function MediaLibraryBrowser({
+  open,
+  onOpenChange,
+  onPick,
+  currentImage,
+  onUnauthorized,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onPick: (url: string) => void
+  currentImage: string | null
+  onUnauthorized: () => void
+}) {
+  const [files, setFiles] = useState<MediaFile[] | null>(null)
+  const [loadFailed, setLoadFailed] = useState<boolean>(false)
+
+  const load = useCallback(async () => {
+    setLoadFailed(false)
+    try {
+      const data = await apiFetch<{ files: MediaFile[] }>("/api/admin/uploads")
+      setFiles(data.files)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onUnauthorized()
+        return
+      }
+      setLoadFailed(true)
+      setFiles([])
+    }
+  }, [onUnauthorized])
+
+  // Load the file list when the dialog opens. Deferred to a microtask so
+  // we're not calling setState synchronously in the effect body (keeps the
+  // `react-hooks/set-state-in-effect` lint rule happy).
+  useEffect(() => {
+    if (!open) return
+    queueMicrotask(() => void load())
+  }, [open, load])
+
+  function formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="nice-scrollbar max-h-[85vh] max-w-2xl overflow-y-auto rounded-2xl">
+        <DialogHeader>
+          <DialogTitle>کتابخانه تصاویر</DialogTitle>
+          <DialogDescription>
+            یک تصویر از بین فایل‌های آپلودشده انتخاب کنید.
+          </DialogDescription>
+        </DialogHeader>
+
+        {files === null ? (
+          <div className="flex items-center justify-center py-12" role="status">
+            <Loader2 className="size-8 animate-spin text-primary" aria-hidden />
+          </div>
+        ) : loadFailed ? (
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <p className="text-sm text-muted-foreground">دریافت فهرست تصاویر ناموفق بود.</p>
+            <Button variant="outline" onClick={() => void load()} className="h-11">
+              تلاش مجدد
+            </Button>
+          </div>
+        ) : files.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <ImagePlus className="size-12 text-muted-foreground/40" aria-hidden />
+            <p className="text-sm text-muted-foreground">
+              هنوز تصویری آپلود نشده است.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {files.map((f) => {
+              const isSelected = currentImage === f.url
+              return (
+                <button
+                  key={f.url}
+                  type="button"
+                  onClick={() => onPick(f.url)}
+                  className={`group relative flex flex-col gap-1.5 overflow-hidden rounded-xl border p-1.5 transition-all ${
+                    isSelected
+                      ? "border-primary ring-2 ring-primary/30"
+                      : "border-border hover:border-primary/40 hover:shadow-sm"
+                  }`}
+                  aria-label={`انتخاب ${f.name}`}
+                >
+                  <div className="aspect-square w-full overflow-hidden rounded-lg bg-muted">
+                    <img
+                      src={f.url}
+                      alt={f.name}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    />
+                  </div>
+                  <p className="truncate text-[10px] font-medium text-muted-foreground" dir="ltr">
+                    {f.name}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground/60">{formatSize(f.size)}</p>
+                  {isSelected ? (
+                    <span className="absolute right-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                      <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </span>
+                  ) : null}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 border-t pt-3">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-10">
+            انصراف
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

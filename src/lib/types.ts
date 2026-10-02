@@ -45,6 +45,10 @@ export interface MenuItemDTO {
   /** Admin-defined add-ons (size, extra cheese, spiciness, ...).
    *  Empty array if the item has no options. */
   options: ItemOptionDTO[]
+  /** Time-of-day availability window (HH:MM, Tehran local). When both are
+   *  null, the item is available all day. Supports overnight windows. */
+  availableFrom: string | null
+  availableTo: string | null
 }
 
 /** A selectable add-on for a menu item. `price` is in «هزار تومان» units

@@ -60,6 +60,9 @@ export const itemCreateSchema = z.object({
   sortOrder: z.number().int().min(0).max(10_000).default(0),
   /** Admin-defined option groups. Validated + serialized to JSON for storage. */
   options: optionsArraySchema,
+  /** Time-of-day availability window (HH:MM). Both null = always available. */
+  availableFrom: z.string().trim().regex(/^([01]?\d|2[0-4]):[0-5]\d$/, "ساعت نامعتبر است").nullable().optional(),
+  availableTo: z.string().trim().regex(/^([01]?\d|2[0-4]):[0-5]\d$/, "ساعت نامعتبر است").nullable().optional(),
 })
 
 /** List ALL items (including unavailable) — admin only. */

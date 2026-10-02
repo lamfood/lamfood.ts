@@ -62,3 +62,58 @@ export function menuItemToDTO(row: MenuItem): MenuItemDTO {
     options: parseOptionsJson(optionsJson),
   }
 }
+
+/**
+ * Check whether an item is available at the current Tehran local time,
+ * based on its `availableFrom`/`availableTo` window.
+ *
+ * - Both null → always available (returns true).
+ * - from ≤ to: available when now is in [from, to).
+ * - from > to (overnight window, e.g. 18:00→02:00): available when
+ *   now ≥ from OR now < to.
+ *
+ * @param availableFrom HH:MM string or null
+ * @param availableTo   HH:MM string or null
+ * @param nowMs         Optional override for the current time (for testing).
+ *                      Defaults to `Date.now()`.
+ */
+export function isItemAvailableNow(
+  availableFrom: string | null,
+  availableTo: string | null,
+  nowMs: number = Date.now(),
+): boolean {
+  if (!availableFrom && !availableTo) return true
+  if (!availableFrom || !availableTo) return true // partial config = always available
+
+  const fromMin = parseHourMinute(availableFrom)
+  const toMin = parseHourMinute(availableTo)
+  if (fromMin === null || toMin === null) return true // invalid format = always available
+
+  // Get current time in Tehran timezone as minutes from midnight.
+  const tehranTime = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Tehran",
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(nowMs))
+  const nowMin = parseHourMinute(tehranTime)
+  if (nowMin === null) return true
+
+  if (toMin <= fromMin) {
+    // Overnight window (e.g. 18:00 → 02:00)
+    return nowMin >= fromMin || nowMin < toMin
+  }
+  // Same-day window (e.g. 07:00 → 11:00)
+  return nowMin >= fromMin && nowMin < toMin
+}
+
+/** Parse "HH:MM" → minutes from midnight. Returns null on invalid format. */
+function parseHourMinute(value: string): number | null {
+  const parts = value.split(":")
+  if (parts.length !== 2) return null
+  const h = Number(parts[0])
+  const m = Number(parts[1])
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null
+  if (h < 0 || h > 24 || m < 0 || m > 59) return null
+  return h * 60 + m
+}

@@ -2,12 +2,13 @@
 
 import { useMemo } from "react"
 import { motion } from "framer-motion"
-import { Info, Minus, Plus, SearchX, Sparkles, UtensilsCrossed } from "lucide-react"
+import { Clock, Info, Minus, Plus, SearchX, Sparkles, UtensilsCrossed } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { CATEGORIES } from "@/lib/categories"
 import { faNumber, formatPrice } from "@/lib/format"
+import { isItemAvailableNow, formatTimeFa } from "@/lib/availability"
 import { useBasketStore } from "@/lib/basket-store"
 import type { MenuItemDTO } from "@/lib/types"
 
@@ -40,18 +41,38 @@ function ItemCard({
   const openDetails = () => onOpenItem?.(item.id)
   const clickable = !!onOpenItem
 
+  /** Time-of-day availability — checked client-side so it updates live
+   *  without a server round-trip. */
+  const hasTimeWindow = !!(item.availableFrom && item.availableTo)
+  const availableNow = isItemAvailableNow(item.availableFrom, item.availableTo)
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index, 8) * 0.04, ease: "easeOut" }}
     >
-      <Card className="group relative gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:-translate-y-0.5 hover:shadow-xl">
+      <Card className={`group relative gap-0 overflow-hidden rounded-2xl py-0 transition-all hover:-translate-y-0.5 hover:shadow-xl ${!availableNow ? "opacity-60" : ""}`}>
         {/* Featured ribbon — top-right of the image */}
         {item.featured ? (
           <span className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-accent/90 px-2.5 py-1 text-[11px] font-bold text-accent-foreground shadow-md backdrop-blur">
             <Sparkles className="size-3" aria-hidden />
             پیشنهاد شف
+          </span>
+        ) : null}
+
+        {/* "Unavailable now" badge when outside the time window */}
+        {hasTimeWindow && !availableNow ? (
+          <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-destructive/90 px-2.5 py-1 text-[11px] font-bold text-white shadow-md backdrop-blur">
+            <Clock className="size-3" aria-hidden />
+            فعلاً موجود نیست
+          </span>
+        ) : null}
+        {/* "Available hours" hint when the item has a time window but IS available */}
+        {hasTimeWindow && availableNow ? (
+          <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-background/85 px-2 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm backdrop-blur">
+            <Clock className="size-2.5" aria-hidden />
+            {formatTimeFa(item.availableFrom!)}—{formatTimeFa(item.availableTo!)}
           </span>
         ) : null}
 
@@ -124,15 +145,16 @@ function ItemCard({
             </span>
 
             {qty === 0 ? (
-              <motion.div whileTap={{ scale: 0.92 }} className="inline-flex">
+              <motion.div whileTap={availableNow ? { scale: 0.92 } : undefined} className="inline-flex">
                 <Button
                   size="sm"
                   className="h-10 rounded-full px-4"
-                  onClick={() => add(item)}
-                  aria-label={`افزودن ${item.name} به سبد خرید`}
+                  disabled={!availableNow}
+                  onClick={() => availableNow && add(item)}
+                  aria-label={availableNow ? `افزودن ${item.name} به سبد خرید` : `${item.name} فعلاً موجود نیست`}
                 >
                   <Plus className="h-4 w-4" aria-hidden />
-                  افزودن
+                  {availableNow ? "افزودن" : "ناموجود"}
                 </Button>
               </motion.div>
             ) : (

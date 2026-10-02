@@ -31,6 +31,13 @@ model MenuItem {
    *  need a join table for a simple fixed-form menu item. */
   optionsJson String   @default("[]")
 
+  /** Time-of-day availability window in HH:MM format (Tehran local time).
+   *  When both are null, the item is available all day.
+   *  When set, the item is only shown/available between these hours.
+   *  Supports overnight windows (e.g. from=18:00, to=02:00). */
+  availableFrom String?
+  availableTo   String?
+
   @@index([category])
   @@index([featured])
 }
