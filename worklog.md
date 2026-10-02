@@ -1158,3 +1158,110 @@ details and add more features/functionality.
 Recommended priority for the next 15-min round: pick #6 (admin dashboard
 stats — medium, high-impact for restaurant ops) or #1 (popularity sort —
 medium, improves discovery). #4 is a content fix the admin can do themselves.
+
+---
+Task ID: 10
+Agent: main (webDevReview — cron-triggered round 9)
+Task: QA the current state via agent-browser, fix any bugs found, then add
+new features and styling polish. Mandatory: improve styling with more
+details and add more features/functionality.
+
+## Current project status (assessment at start of round)
+- All previous work pushed (commits `77fe475` → `8fbe1e5`): 12 categories,
+  theme bug fix, CategoryGrid, featured items, item details dialog,
+  back-to-top, admin featured toggle, dark mode (public + admin),
+  search filters (category filter + 5 sort options including name A-Z/Z-A),
+  search-by-category, image MIME fix, hero polish, order persistence,
+  admin Orders tab + notifications, public tracking page with auto-refresh
+  + recent orders, item options/addons (single + multi-select), customer
+  order history, time-based item availability, media library browser,
+  featured section availability badges.
+- Dev server running on port 3000; 24 items seeded (6 featured); breakfast
+  has 07:00-11:00 time window; 2 items with options; 5+ orders in DB.
+- /admin login works (admin/admin123); 3 admin tabs (items, orders, settings).
+- Round-9 handover recommended: #6 admin dashboard stats, #1 popularity sort.
+
+## QA findings (via agent-browser)
+- ✅ All previous features working: 24/24 images load (22 after lazy-load
+  scroll), dark mode, search filters, featured section with availability
+  badges, item details dialog with options, order submission → admin Orders
+  tab + notifications, tracking page with auto-refresh + recent orders,
+  time-based availability, media library browser.
+- ⚠️ Gap: no admin dashboard — the admin has the Orders tab with order
+  stats cards, but no overall dashboard (total revenue, orders per day,
+  top items, status breakdown).
+
+## Goals / completed modifications / verification
+
+### New feature: admin dashboard stats (#6)
+- **API**: `src/app/api/admin/stats/route.ts` (new) — admin GET endpoint
+  that aggregates all order data into:
+  - `totalRevenue`: sum of all DELIVERED order totals.
+  - `totalOrders`: count of all orders.
+  - `ordersByStatus`: {NEW, SEEN, PREPARING, READY, DELIVERED, CANCELLED}
+    counts.
+  - `ordersTodayCount` + `revenueToday`: filtered by Tehran local date
+    boundary (UTC+3:30 handled explicitly).
+  - `last7Days`: `{date, orderCount, revenue}` for the last 7 days.
+  - `topItems`: top 5 items by quantity, parsed from linesJson snapshots
+    across all non-cancelled orders.
+- **UI**: `src/components/admin/DashboardStats.tsx` (new) — full dashboard
+  component with:
+  - 4 stat cards: درآمد کل (revenue, emerald), سفارش‌ها (total orders,
+    primary), سفارش امروز (today, sky), در انتظار (pending, amber).
+    Each has a color-coded icon container.
+  - **CSS-only 7-day bar chart** (no chart library): 7 vertical bars with
+    heights proportional to the day's order count; bar fill is
+    `bg-primary/70` with a hover state (`bg-primary`); hover title shows
+    the count; date labels in MM/DD format below each bar.
+  - **Status breakdown card**: all 6 statuses with Persian labels + counts.
+  - **Top items card**: ranked 1-5 by quantity, each with rank badge +
+    item name + qty + revenue.
+  - Manual refresh button (RefreshCw, spins while loading).
+  - Loading skeleton + load-failed retry state.
+- **AdminDashboard**: "داشبورد" is now the DEFAULT tab (first tab, opens
+  on dashboard). TabsList has 4 tabs: Dashboard, Items, Orders, Settings.
+  Added `overflow-x-auto` for mobile (4 tabs might overflow on small
+  screens).
+
+### Verification
+- Lint: `bun run lint` → 0 errors.
+- Endpoints: `GET /api/admin/stats` 200 (with auth) / 401 (without auth).
+- agent-browser:
+  * Dashboard tab opens by default after login.
+  * 4 stat cards render with values (۵ orders, ۵ today, ۵ pending,
+    ۰ revenue — revenue is 0 because no orders are DELIVERED yet).
+  * 7-day bar chart renders 7 bars; the last day has a spike (today's
+    test orders — expected since all test orders were created today).
+  * Status breakdown shows all 6 statuses with correct counts.
+  * Top items shows 5 items ranked by quantity.
+  * VLM review: MINOR_ISSUES (only note was the bar chart spike from
+    today's test data — not a UI bug; real data would be more spread out).
+  * No console errors, no page errors.
+
+## Commit & push
+- Commit `00e581f feat: admin dashboard with stats, 7-day chart, top items`
+  (3 files, +437 / -3).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+## Unresolved issues / risks & next-phase recommendations
+1. **Search popularity sort** — would need a `viewCount` + `addToBasketCount`
+   on MenuItem, incremented via the API. (Remaining from #2.)
+2. **Order notifications are poll-based** (30s). For true real-time push,
+   could add a WebSocket mini-service. (Carried over from round 5.)
+3. **No order editing** — once submitted, the customer can't modify the
+   order. (Carried over from round 7.)
+4. **Content mismatch** (VLM-flagged, pre-existing): hero text is Persian
+   cuisine but hero image shows pizza/pasta/burgers. Admin can fix via
+   `heroImage` in Settings. (Carried over.)
+5. **No bulk admin operations** — can't bulk-toggle availability, bulk-
+   delete, or drag-to-reorder items. (Carried over from round 8.)
+6. **Dashboard chart is CSS-only** — works fine for 7 bars, but for more
+   complex visualizations (revenue trends, category distribution pie),
+   would need a chart library (recharts is already installed in the
+   project). The current CSS approach keeps the bundle small + avoids
+   a chart lib for a simple 7-bar display.
+
+Recommended priority for the next 15-min round: pick #1 (popularity sort —
+medium, improves discovery) or #5 (bulk admin operations — medium, improves
+admin efficiency). #4 is a content fix the admin can do themselves.
