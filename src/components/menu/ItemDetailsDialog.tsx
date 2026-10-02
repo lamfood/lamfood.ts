@@ -76,13 +76,22 @@ function ItemDetailsContent({
   const add = useBasketStore((state) => state.add)
   const setQty = useBasketStore((state) => state.setQty)
 
-  /** Selected option id per group id. Initialized to the default option
-   *  (or the first option if none is marked default) for each group. */
-  const [selectedByGroup, setSelectedByGroup] = useState<Record<string, string>>(() => {
-    const init: Record<string, string> = {}
+  /** Selected option ids per group id. For single-select groups, the array
+   *  has exactly one element (the selected option). For multiSelect groups,
+   *  it can have zero or more elements (the checked options).
+   *
+   *  Initialized from defaults: single-select picks the first isDefault (or
+   *  the first option); multiSelect picks all isDefault options. */
+  const [selectedByGroup, setSelectedByGroup] = useState<Record<string, string[]>>(() => {
+    const init: Record<string, string[]> = {}
     for (const g of item.options) {
-      const def = g.options.find((o) => o.isDefault) ?? g.options[0]
-      if (def) init[g.id] = def.id
+      if (g.multiSelect) {
+        const defaults = g.options.filter((o) => o.isDefault).map((o) => o.id)
+        init[g.id] = defaults
+      } else {
+        const def = g.options.find((o) => o.isDefault) ?? g.options[0]
+        init[g.id] = def ? [def.id] : []
+      }
     }
     return init
   })
@@ -93,18 +102,34 @@ function ItemDetailsContent({
     let delta = 0
     const names: string[] = []
     for (const g of item.options) {
-      const selId = selectedByGroup[g.id]
-      const sel = g.options.find((o) => o.id === selId)
-      if (sel) {
-        delta += sel.price
-        names.push(sel.name)
+      const selIds = selectedByGroup[g.id] ?? []
+      for (const selId of selIds) {
+        const sel = g.options.find((o) => o.id === selId)
+        if (sel) {
+          delta += sel.price
+          names.push(sel.name)
+        }
       }
     }
     return { effectivePrice: item.price + delta, selectedOptionNames: names }
   }, [item, selectedByGroup])
 
+  /** Select an option in a single-select group (radio behavior — replaces
+   *  the previous selection). */
   function selectOption(groupId: string, optionId: string) {
-    setSelectedByGroup((prev) => ({ ...prev, [groupId]: optionId }))
+    setSelectedByGroup((prev) => ({ ...prev, [groupId]: [optionId] }))
+  }
+
+  /** Toggle an option in a multi-select group (checkbox behavior — adds or
+   *  removes the option from the selected set). */
+  function toggleOption(groupId: string, optionId: string) {
+    setSelectedByGroup((prev) => {
+      const current = prev[groupId] ?? []
+      const next = current.includes(optionId)
+        ? current.filter((id) => id !== optionId)
+        : [...current, optionId]
+      return { ...prev, [groupId]: next }
+    })
   }
 
   return (
@@ -177,8 +202,9 @@ function ItemDetailsContent({
               <OptionGroup
                 key={group.id}
                 group={group}
-                selectedId={selectedByGroup[group.id] ?? null}
+                selectedIds={selectedByGroup[group.id] ?? []}
                 onSelect={(optId) => selectOption(group.id, optId)}
+                onToggle={(optId) => toggleOption(group.id, optId)}
               />
             ))}
           </div>
@@ -274,24 +300,33 @@ function ItemDetailsContent({
 }
 
 /* ------------------------------------------------------------------ */
-/* Option group (radio-style selector)                                  */
+/* Option group (radio or checkbox selector)                           */
 /* ------------------------------------------------------------------ */
 
 function OptionGroup({
   group,
-  selectedId,
+  selectedIds,
   onSelect,
+  onToggle,
 }: {
   group: ItemOptionGroupDTO
-  selectedId: string | null
+  /** For single-select: exactly one id (or empty). For multiSelect: zero+. */
+  selectedIds: string[]
   onSelect: (optionId: string) => void
+  onToggle: (optionId: string) => void
 }) {
+  const isMulti = !!group.multiSelect
   return (
     <fieldset className="grid gap-2 rounded-2xl border bg-card p-3">
-      <legend className="px-1 text-sm font-bold">{group.label}</legend>
+      <legend className="flex items-center gap-2 px-1">
+        <span className="text-sm font-bold">{group.label}</span>
+        <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-normal text-muted-foreground">
+          {isMulti ? "چندانتخابی" : "یک گزینه"}
+        </Badge>
+      </legend>
       <div className="grid gap-1.5">
         {group.options.map((opt) => {
-          const isSelected = opt.id === selectedId
+          const isSelected = selectedIds.includes(opt.id)
           return (
             <label
               key={opt.id}
@@ -303,10 +338,10 @@ function OptionGroup({
             >
               <span className="flex items-center gap-2.5">
                 <input
-                  type="radio"
+                  type={isMulti ? "checkbox" : "radio"}
                   name={group.id}
                   checked={isSelected}
-                  onChange={() => onSelect(opt.id)}
+                  onChange={() => (isMulti ? onToggle(opt.id) : onSelect(opt.id))}
                   className="size-4 cursor-pointer accent-primary"
                   aria-label={opt.name}
                 />

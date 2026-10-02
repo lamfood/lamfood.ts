@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { apiFetch, ApiError } from "@/lib/api"
 import { faNumber, formatPrice } from "@/lib/format"
+import { addRecentOrder } from "@/hooks/use-recent-orders"
 import { basketCount, basketLineList, basketTotal, useBasketStore } from "@/lib/basket-store"
 import type { BasketLine } from "@/lib/basket-store"
 import type { PublicOrderResponse, RestaurantConfig } from "@/lib/types"
@@ -98,6 +99,13 @@ export default function BasketSheet({ open, onOpenChange, config }: BasketSheetP
       })
       publicCode = data.order.publicCode
       setLastOrderCode(publicCode)
+      // Persist to localStorage so the customer can re-track this order later
+      // from the /track page's "سفارش‌های اخیر" list.
+      addRecentOrder({
+        code: publicCode,
+        createdAt: data.order.createdAt,
+        total: data.order.total,
+      })
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
         toast.error(err.message)

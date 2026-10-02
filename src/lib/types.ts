@@ -62,13 +62,21 @@ export interface ItemOptionDTO {
 
 /** Group of options where the customer picks exactly one (e.g. size).
  *  A single MenuItem can have multiple option groups (e.g. size + spice level).
- *  Stored on MenuItem.optionsJson as an array of these. */
+ *  Stored on MenuItem.optionsJson as an array of these.
+ *
+ *  When `multiSelect` is true, the customer can pick any number of options
+ *  (checkboxes — e.g. "extra cheese", "no ice"). When false (default), the
+ *  customer picks exactly one (radio — e.g. size S/M/L). */
 export interface ItemOptionGroupDTO {
   id: string
   /** Persian label shown above the group (e.g. «اندازه», «سطح تندی»). */
   label: string
-  /** One of the options in `options` should have isDefault=true (or none). */
+  /** One of the options in `options` should have isDefault=true (or none).
+   *  For multiSelect groups, isDefault marks options pre-checked on open. */
   options: ItemOptionDTO[]
+  /** When true, the customer can select multiple options (checkboxes).
+   *  Default false (radio — single selection). */
+  multiSelect?: boolean
 }
 
 export type MenuResponse = { items: MenuItemDTO[] }

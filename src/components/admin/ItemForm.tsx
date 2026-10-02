@@ -397,7 +397,7 @@ function OptionsEditor({
   function addGroup() {
     onChange([
       ...optionGroups,
-      { id: genId("grp"), label: "", options: [{ id: genId("opt"), name: "", price: 0, isDefault: true }] },
+      { id: genId("grp"), label: "", options: [{ id: genId("opt"), name: "", price: 0, isDefault: true }], multiSelect: false },
     ])
   }
 
@@ -408,6 +408,33 @@ function OptionsEditor({
   function updateGroupLabel(groupIdx: number, label: string) {
     onChange(
       optionGroups.map((g, i) => (i === groupIdx ? { ...g, label } : g)),
+    )
+  }
+
+  /** Toggle a group between single-select (radio) and multi-select (checkbox).
+   *  When switching to single-select, if multiple options have isDefault=true,
+   *  keep only the first. */
+  function toggleMultiSelect(groupIdx: number, multiSelect: boolean) {
+    onChange(
+      optionGroups.map((g, i) => {
+        if (i !== groupIdx) return g
+        if (!multiSelect) {
+          // Switching to single-select: keep only the first default.
+          let seenDefault = false
+          return {
+            ...g,
+            multiSelect: false,
+            options: g.options.map((o) => {
+              if (o.isDefault && !seenDefault) {
+                seenDefault = true
+                return o
+              }
+              return { ...o, isDefault: false }
+            }),
+          }
+        }
+        return { ...g, multiSelect: true }
+      }),
     )
   }
 
@@ -453,12 +480,23 @@ function OptionsEditor({
     )
   }
 
-  /** When an option is marked default, unset isDefault on its siblings
-   *  (radio-style: exactly one default per group). */
-  function setDefault(groupIdx: number, optIdx: number) {
+  /** Toggle the isDefault flag on an option. For single-select groups
+   *  (radio), only one option can be default at a time (radio behavior).
+   *  For multiSelect groups, each option's isDefault is independent. */
+  function toggleDefault(groupIdx: number, optIdx: number) {
     onChange(
       optionGroups.map((g, i) => {
         if (i !== groupIdx) return g
+        if (g.multiSelect) {
+          // Checkbox: toggle this option's default independently.
+          return {
+            ...g,
+            options: g.options.map((o, j) =>
+              j === optIdx ? { ...o, isDefault: !o.isDefault } : o,
+            ),
+          }
+        }
+        // Radio: exactly one default per group.
         return {
           ...g,
           options: g.options.map((o, j) => ({ ...o, isDefault: j === optIdx })),
@@ -486,8 +524,8 @@ function OptionsEditor({
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        گروهی از گزینه‌ها که مشتری باید یکی را انتخاب کند (مثل اندازه یا سطح تندی).
-        قیمت هر گزینه به قیمت پایه آیتم اضافه می‌شود.
+        گروهی از گزینه‌ها که مشتری باید انتخاب کند (مثل اندازه یا سطح تندی).
+        برای افزودنی‌های اختیاری (مثل «پنیر اضافه»)، حالت چندانتخابی را فعال کنید.
       </p>
 
       {optionGroups.length === 0 ? (
@@ -499,15 +537,28 @@ function OptionsEditor({
         <div className="grid gap-3">
           {optionGroups.map((group, gi) => (
             <div key={group.id} className="grid gap-2 rounded-lg border bg-background p-3">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Input
                   value={group.label}
                   onChange={(e) => updateGroupLabel(gi, e.target.value)}
                   placeholder="عنوان گروه (مثل: اندازه)"
-                  className="h-9 flex-1 text-sm font-medium"
+                  className="h-9 min-w-[8rem] flex-1 text-sm font-medium"
                   aria-label={`عنوان گروه ${gi + 1}`}
                   maxLength={60}
                 />
+                {/* Multi-select toggle */}
+                <label
+                  className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border bg-muted/40 px-2.5 text-xs"
+                  title={group.multiSelect ? "حالت چندانتخابی (چند گزینه قابل انتخاب)" : "حالت تک‌انتخابی (فقط یک گزینه)"}
+                >
+                  <Switch
+                    checked={!!group.multiSelect}
+                    onCheckedChange={(v) => toggleMultiSelect(gi, v === true)}
+                    aria-label="چندانتخابی"
+                    className="scale-75"
+                  />
+                  <span className="text-muted-foreground">چندانتخابی</span>
+                </label>
                 <Button
                   type="button"
                   variant="ghost"
@@ -523,13 +574,13 @@ function OptionsEditor({
               <div className="grid gap-2">
                 {group.options.map((opt, oi) => (
                   <div key={opt.id} className="flex flex-wrap items-center gap-2">
-                    {/* Default radio */}
+                    {/* Default indicator: checkbox for multiSelect, radio for single-select */}
                     <input
-                      type="radio"
+                      type={group.multiSelect ? "checkbox" : "radio"}
                       name={`default-${group.id}`}
                       checked={opt.isDefault}
-                      onChange={() => setDefault(gi, oi)}
-                      aria-label="پیش‌فرض این گروه"
+                      onChange={() => toggleDefault(gi, oi)}
+                      aria-label={group.multiSelect ? "پیش‌فرض (پیش‌انتخاب شده)" : "پیش‌فرض این گروه"}
                       className="size-4 shrink-0 cursor-pointer accent-primary"
                     />
                     <Input

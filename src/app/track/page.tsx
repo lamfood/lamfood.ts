@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import {
+  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   ChefHat,
@@ -25,6 +26,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ApiError, apiFetch } from "@/lib/api"
 import { faNumber, formatPrice } from "@/lib/format"
+import { useRecentOrders } from "@/hooks/use-recent-orders"
 import {
   ORDER_STATUS_META,
   type OrderDTO,
@@ -334,7 +336,7 @@ export default function TrackOrderPage() {
         {/* Result */}
         <div className="mt-4">
           {view.kind === "idle" ? (
-            <IdleHint />
+            <IdleHint onPickCode={(c) => void lookup(c)} />
           ) : view.kind === "loading" ? (
             <LoadingState />
           ) : view.kind === "not_found" ? (
@@ -366,13 +368,61 @@ export default function TrackOrderPage() {
 /* Sub-views                                                           */
 /* ------------------------------------------------------------------ */
 
-function IdleHint() {
+function IdleHint({ onPickCode }: { onPickCode: (code: string) => void }) {
+  const recentOrders = useRecentOrders()
+
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed p-8 text-center">
-      <Package className="size-12 text-muted-foreground/40" aria-hidden />
-      <p className="font-medium text-muted-foreground">
-        برای پیگیری سفارش، کد آن را در بالا وارد کنید.
-      </p>
+    <div className="grid gap-4">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed p-8 text-center">
+        <Package className="size-12 text-muted-foreground/40" aria-hidden />
+        <p className="font-medium text-muted-foreground">
+          برای پیگیری سفارش، کد آن را در بالا وارد کنید.
+        </p>
+      </div>
+
+      {/* Recent orders (localStorage-backed) — shown when the customer has
+          submitted orders before on this device. */}
+      {recentOrders.length > 0 ? (
+        <Card className="gap-3 rounded-2xl p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
+              <Clock className="size-4" aria-hidden />
+              سفارش‌های اخیر شما
+            </h3>
+            <span className="text-xs text-muted-foreground">
+              {faNumber(recentOrders.length)} سفارش
+            </span>
+          </div>
+          <ul className="grid gap-2">
+            {recentOrders.map((o) => (
+              <li key={o.code}>
+                <button
+                  type="button"
+                  onClick={() => onPickCode(o.code)}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border bg-muted/30 px-3 py-2.5 text-right transition-colors hover:border-primary/40 hover:bg-primary/5"
+                  aria-label={`پیگیری سفارش ${o.code}`}
+                >
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="font-mono text-sm font-bold tracking-wider" dir="ltr">
+                      {o.code}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {formatDateTime(o.createdAt)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold">{formatPrice(o.total)}</span>
+                    <ArrowLeft className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="text-center text-[11px] text-muted-foreground">
+            این لیست فقط روی این دستگاه ذخیره شده است.
+          </p>
+        </Card>
+      ) : null}
     </div>
   )
 }

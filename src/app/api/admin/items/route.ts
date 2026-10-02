@@ -21,6 +21,9 @@ const optionGroupSchema = z.object({
   id: z.string().trim().min(1).max(40),
   label: z.string().trim().min(1, "عنوان گروه گزینه‌ها الزامی است").max(60),
   options: z.array(optionSchema).min(1, "هر گروه حداقل یک گزینه باید داشته باشد").max(20),
+  /** When true, the customer can select multiple options (checkboxes).
+   *  Default false (radio — single selection). */
+  multiSelect: z.boolean().default(false),
 })
 
 /** Top-level options array on MenuItem. Empty array = no options. */

@@ -39,6 +39,8 @@ export function parseOptionsJson(raw: string): ItemOptionGroupDTO[] {
             price: o.price,
             isDefault: o.isDefault,
           })),
+        // Preserve multiSelect (default false if absent for backward compat).
+        multiSelect: typeof g.multiSelect === "boolean" ? g.multiSelect : false,
       }))
   } catch {
     return []
