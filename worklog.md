@@ -1566,3 +1566,52 @@ on mobile.
 - Commit `04dccf4 fix: toggle switches + all ItemForm buttons mobile-responsive`
   (2 files, +30 / -26).
 - Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
+
+---
+Task ID: 16
+Agent: main (user-requested feature)
+Task: Add account section in admin settings for password change + username change
+
+## Goals / completed modifications / verification
+
+### API
+- `src/lib/config.ts`: added `updateAdminCredentials()` — atomically
+  persists new username and/or passwordHash to config.json.
+- `src/app/api/admin/account/route.ts` (new):
+  * **PUT** — change password: validates currentPassword (via scrypt
+    verifyPassword), checks newPassword === confirmPassword, rejects
+    same-as-current, hashes + persists. Admin-only, CSRF-guarded.
+  * **POST** — change username: validates newUsername (3-40 chars,
+    alphanumeric + ._- regex), rejects same-as-current, persists.
+    Admin-only, CSRF-guarded.
+
+### UI
+- `src/components/admin/AccountSection.tsx` (new):
+  * **Change Password card**: 3 fields (current, new, confirm) with
+    show/hide eye toggles. Submit disabled until all filled + new===confirm
+    + new!==current. On submit → **2-step confirmation dialog**:
+    - Step 1: "تایید تغییر رمز عبور" → continue/abort
+    - Step 2: "تایید نهایی" — destructive red button, warns irreversible
+  * **Change Username card**: shows current username (disabled input),
+    new username input with validation hint. On submit → single
+    confirmation dialog showing old→new names. After change, forces
+    re-login (calls onUnauthorized).
+- `src/components/admin/AdminDashboard.tsx`: added "حساب کاربری" (Account)
+  tab — 5th tab with UserCog icon. Mobile label: "حساب".
+
+### Verification
+- Account tab visible (5 tabs: dashboard, items, orders, settings, account).
+- Password form: 3 inputs + 3 show/hide toggles + submit button.
+  Submit disabled until valid → step 1 dialog "تایید تغییر رمز عبور"
+  → continue → step 2 dialog "تایید نهایی" (destructive, irreversible)
+  → cancel/confirm.
+- Username form: current username (disabled) + new username input +
+  submit button (disabled when empty).
+- API: PUT/POST → 401 without auth ✓
+- VLM review: OK
+- Lint: 0 errors
+
+## Commit & push
+- Commit `6de69f1 feat: admin account section — change password + change
+  username` (4 files, +605 / -1).
+- Pushed to `origin/main` (lamfood/lamfood.ts). Remote HEAD matches local.
