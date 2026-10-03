@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 
-import { ChefHat, ExternalLink, LayoutDashboard, Loader2, LogOut, Package, Settings, UtensilsCrossed } from "lucide-react"
+import { ChefHat, ExternalLink, LayoutDashboard, Loader2, LogOut, Package, Settings, UserCog, UtensilsCrossed } from "lucide-react"
 import { toast } from "sonner"
 
+import AccountSection from "@/components/admin/AccountSection"
 import DashboardStats from "@/components/admin/DashboardStats"
 import ItemsManager from "@/components/admin/ItemsManager"
 import OrdersManager from "@/components/admin/OrdersManager"
@@ -177,6 +178,11 @@ export default function AdminDashboard({
               <span className="hidden sm:inline">تنظیمات رستوران</span>
               <span className="sm:hidden">تنظیمات</span>
             </TabsTrigger>
+            <TabsTrigger value="account" className="gap-1.5 px-3 text-xs sm:gap-2 sm:px-4 sm:text-sm">
+              <UserCog className="size-4" aria-hidden />
+              <span className="hidden sm:inline">حساب کاربری</span>
+              <span className="sm:hidden">حساب</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="mt-4">
@@ -193,6 +199,10 @@ export default function AdminDashboard({
 
           <TabsContent value="settings" className="mt-4">
             <SettingsForm onUnauthorized={onUnauthorized} />
+          </TabsContent>
+
+          <TabsContent value="account" className="mt-4">
+            <AccountSection currentUsername={username} onUnauthorized={onUnauthorized} />
           </TabsContent>
         </Tabs>
       </main>

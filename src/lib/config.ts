@@ -153,3 +153,19 @@ export function updateRestaurantConfig(input: unknown): RestaurantConfig {
   atomicWrite(JSON.stringify(next, null, 2) + "\n");
   return next.restaurant;
 }
+
+/** Persist new admin credentials (username and/or passwordHash) atomically. */
+export function updateAdminCredentials(updates: {
+  username?: string;
+  passwordHash?: string;
+}): void {
+  const current = readConfig();
+  const next: AdminConfig = {
+    ...current,
+    admin: {
+      username: updates.username ?? current.admin.username,
+      passwordHash: updates.passwordHash ?? current.admin.passwordHash,
+    },
+  };
+  atomicWrite(JSON.stringify(next, null, 2) + "\n");
+}
